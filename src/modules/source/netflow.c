@@ -25,7 +25,7 @@
 #define BUFSIZ 65535
 #endif
 
-#define FLOW_EXPIRY_TIME		60
+#define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
 
 static int sock;
 
