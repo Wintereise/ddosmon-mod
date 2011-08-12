@@ -85,7 +85,7 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 	fprintf(out, "\nQuantized attack statistics:\n");
 	fprintf(out, "MBPS     : %.2f\n", (rec->flows[packet->ip_type].flow / 1000000.));
 	fprintf(out, "PPS      : %ld\n", rec->flows[packet->ip_type].pps);
-	fprintf(out, "AFLS     : %ld\n", rec->flows[packet->ip_type].count);
+	fprintf(out, "AFLS     : %u\n", rec->flows[packet->ip_type].count);
 
 	fclose(out);
 }
