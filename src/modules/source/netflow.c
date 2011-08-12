@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 
 #include "stdinc.h"
@@ -100,6 +101,7 @@ typedef struct _flowrecord {
 	struct _flowrecord *prev, *next;
 
 	time_t first_seen;
+	bool injected;
 
 	uint16_t src_port;
 	uint16_t dst_port;
@@ -374,14 +376,20 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			.len = fakebps,
 			.packets = fakepps,
 			.tcp_flags = rec->tcp_flags,
-			.new_flow = crec->first_seen == get_time() ? 1 : 0,
+			.new_flow = !crec->injected,
 		};
 
 		/* if flow is pre-cached, or small, then inject it. */
 		if ((crec->bytes != 0 || crec->packets != 0))
+		{
+			crec->injected = true;
 			ipstate_update(&inject);
+		}
 		else if ((rec->bytes <= 1024 && rec->packets <= 20))
+		{
+			crec->injected = true;
 			ipstate_update(&inject);
+		}
 
 		crec->bytes = rec->bytes;
 		crec->packets = rec->packets;
