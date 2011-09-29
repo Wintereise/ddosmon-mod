@@ -39,6 +39,7 @@ struct ip_hdr {
 #define IP_HL(ip)			(((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)			(((ip)->ip_vhl) >> 4)
 #define SIZE_IP(ip)			(IP_HL(ip) * 4)
+#define IPPROTO_MAX			(255)
 
 struct udp_hdr {
 	unsigned short udp_sport;	/* source port */

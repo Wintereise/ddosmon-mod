@@ -19,7 +19,7 @@ struct flowdata_ {
 
 struct iprecord_ {
         uint32_t addr;
-	flowdata_t flows[256];
+	flowdata_t flows[IPPROTO_MAX + 1];
 };
 
 void ipstate_clear(void);

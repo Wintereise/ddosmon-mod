@@ -9,6 +9,10 @@
 
 static char *alerts_from, *alerts_to, *mta;
 
+#ifndef BUFSIZ
+#define BUFSIZ 65535
+#endif
+
 static const char *
 get_protocol(int proto)
 {
@@ -35,14 +39,14 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 {
 	FILE *out;
 	int pipfds[2];
-	char timebuf[256];
+	char timebuf[BUFSIZ];
 	char srcbuf[INET6_ADDRSTRLEN];
 	char dstbuf[INET6_ADDRSTRLEN];
-	char emailbuf[2048];
+	char emailbuf[BUFSIZ];
 	time_t t;
 	struct tm tm;
 
-	snprintf(emailbuf, 2048, "%s %s", mta, alerts_to);
+	snprintf(emailbuf, sizeof emailbuf, "%s %s", mta, alerts_to);
 
 	inet_ntop(AF_INET, &packet->pkt_src, srcbuf, INET6_ADDRSTRLEN);
 	inet_ntop(AF_INET, &packet->pkt_dst, dstbuf, INET6_ADDRSTRLEN);
