@@ -28,6 +28,7 @@ AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([dup2 memset socket strcasecmp strchr strdup strerror strrchr getrlimit])
 
+BUILDSYS_INIT
 BUILDSYS_SHARED_LIB
 BUILDSYS_TOUCH_DEPS
 
