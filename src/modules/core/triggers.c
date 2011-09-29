@@ -44,7 +44,7 @@ typedef struct _banrecord {
         time_t added;
 } banrecord_t;
 
-static trigger_t *t_list[255];
+static trigger_t *t_list[256];
 static patricia_tree_t *banrecord_trie = NULL;
 static banrecord_t *banrecord_list = NULL;
 static int expiry;
