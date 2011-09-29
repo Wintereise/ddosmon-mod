@@ -85,7 +85,7 @@ typedef enum {
 	NETFLOW_MAX_PROTO = 255,
 } netflow_proto_t;
 
-static const char *protonames[NETFLOW_MAX_PROTO] = {
+static const char *protonames[NETFLOW_MAX_PROTO + 1] = {
 	[NETFLOW_PROTO_TCP] = "TCP",
 	[NETFLOW_PROTO_UDP] = "UDP",
 };
