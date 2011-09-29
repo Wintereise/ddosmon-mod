@@ -6,3 +6,6 @@ buildsys.mk
 config.log
 config.status
 extra.mk
+autom4te.cache/
+src/autoconf.h.in~
+src/autoconf.h
