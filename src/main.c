@@ -30,7 +30,7 @@ hook_t *hook_list[MAX_HOOKS];
 #undef HAVE_FORK
 
 static void
-daemonize(void)
+daemonize(const char *b_wm)
 {
 #ifdef HAVE_FORK
 	int pid;
@@ -42,6 +42,7 @@ daemonize(void)
 	}
 	else if (pid != 0)
 	{
+		printf("ddosmon: build identifier %s\n", b_wm);
 		printf("ddosmon: pid %d\n", pid);
 		printf("ddosmon: running in background mode from %s\n", PREFIX);
 		exit(EXIT_SUCCESS);
@@ -55,6 +56,8 @@ daemonize(void)
 
 	dup2(0, 1);
 	dup2(0, 2);
+#else
+	printf("ddosmon: build identifier %s [DEBUG]\n", b_wm);
 #endif
 }
 
@@ -70,6 +73,7 @@ get_time(void)
 int
 main(int argc, const char *argv[])
 {
+	static char *build_watermark = WATERMARK;
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
 #endif
@@ -87,7 +91,7 @@ main(int argc, const char *argv[])
 
 	signal(SIGCHLD, SIG_IGN);
 
-	daemonize();
+	daemonize(build_watermark);
 
 	init_ipstate();
 	init_dissectors();
