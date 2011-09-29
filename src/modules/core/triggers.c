@@ -28,6 +28,7 @@ typedef struct _trigger {
 	unsigned int target_mbps;
 	unsigned int target_flowcount;
 	unsigned int below_mbps;
+	unsigned int expiry;
 	unsigned char protocol;
 	unsigned char tcp_synonly;
 
@@ -123,6 +124,9 @@ expire_triggers(void)
 		patricia_node_t *node;
 
 		if (get_time() < (rec->added + expiry))
+			continue;
+
+		if (!rec->t->expiry || get_time() < (rec->added + rec->t->expiry))
 			continue;
 
 		run_triggers(ACTION_UNBAN, rec->t, &rec->pkt, &rec->irec);
@@ -248,6 +252,8 @@ parse_trigger(config_entry_t *entry)
 			t->below_mbps = atoi(ce->ce_vardata);
 		else if (!strcasecmp(ce->ce_varname, "target_pps"))
 			t->target_pps = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "expiry"))
+			t->expiry = atoi(ce->ce_vardata);
 		else if (!strcasecmp(ce->ce_varname, "actions"))
 			parse_actions(t, ce->ce_entries);
 	}
