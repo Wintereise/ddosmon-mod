@@ -1,1 +1,8 @@
 *.o
+*.so
+ddosmon
+.deps
+buildsys.mk
+config.log
+config.status
+extra.mk
