@@ -29,6 +29,7 @@
 #define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
 
 static int sock;
+static unsigned int bind_port = 9996;
 
 /*****************************************************************************************
  * Netflow packet layout and descriptions.                                               *
@@ -413,10 +414,10 @@ netflow_prepare(void)
 {
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(9996) };
+	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(bind_port) };
 	bind(sock, (struct sockaddr *) &sin, sizeof sin);
 
-	DPRINTF("listening on udp port %d\n", 9996);
+	DPRINTF("listening on udp port %d\n", bind_port);
 
 	dst_host_tree = New_Patricia(32);
 
