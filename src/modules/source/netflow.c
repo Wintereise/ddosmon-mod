@@ -444,7 +444,8 @@ netflow_readpkt(packet_info_t *info)
 	cmn->version = ntohs(cmn->version);
 
 	DPRINTF("Netflow version %d.\n", cmn->version);
-	pfunc[cmn->version](pkt, info);
+	if (pfunc[cmn->version] != NULL)
+		pfunc[cmn->version](pkt, info);
 
 	/*
 	 * as netflow is layer-3 oriented, we do not need to parse raw link-layer frames.
