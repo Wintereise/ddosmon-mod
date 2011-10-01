@@ -470,5 +470,13 @@ static eventsource_t netflow_eventsource = {
 void
 module_cons(config_entry_t *entry)
 {
+	config_entry_t *ce;
+
+	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	{
+		if (!strcasecmp(ce->ce_varname, "bind_port"))
+			bind_port = atoi(ce->ce_vardata);
+	}
+
 	ev = &netflow_eventsource;
 }
