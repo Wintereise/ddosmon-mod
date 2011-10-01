@@ -413,7 +413,7 @@ netflow_prepare(void)
 {
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	struct sockaddr_in sin = { .sin_port = htons(9996) };
+	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(9996) };
 	bind(sock, (struct sockaddr *) &sin, sizeof sin);
 
 	DPRINTF("listening on udp port %d\n", 9996);
