@@ -45,6 +45,33 @@ typedef struct {
 	uint32_t uptime;
 	uint32_t unix_ts;
 	uint32_t unix_tns;
+} netflow_v1hdr_t;
+
+typedef struct {
+	struct in_addr src;
+	struct in_addr dst;
+	struct in_addr nexthop;
+	uint16_t snmp_in;
+	uint16_t snmp_out;
+	uint32_t packets;
+	uint32_t bytes;
+	uint32_t first_ts;
+	uint32_t last_ts;
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint16_t pad1;
+	uint8_t proto;
+	uint8_t tos;
+	uint8_t tcp_flags;
+	unsigned char pad2[7];
+} netflow_v1rec_t;
+
+typedef struct {
+	uint16_t version;
+	uint16_t flowcount;
+	uint32_t uptime;
+	uint32_t unix_ts;
+	uint32_t unix_tns;
 	uint32_t sequence;
 	uint8_t engine_type;
 	uint8_t engine_id;
@@ -75,6 +102,7 @@ typedef struct {
 } netflow_v5rec_t;
 
 typedef enum {
+	NETFLOW_VERSION_1 = 1,
 	NETFLOW_VERSION_5 = 5,
 	NETFLOW_VERSION_9 = 9,
 	NETFLOW_MAX_VERSION
@@ -278,6 +306,30 @@ flowcache_clear(void)
  *****************************************************************************************/
 
 static flowcache_record_t *
+flowcache_correlate_v1(netflow_v1rec_t *rec)
+{
+	flowcache_src_host_t *src;
+	flowcache_dst_host_t *dst;
+	flowcache_record_t *record;
+	uint8_t hashv = FLOW_HASH(rec->src_port);
+
+	dst = flowcache_dst_host_lookup(&rec->dst);
+	src = flowcache_src_host_lookup(dst, &rec->src);
+
+	record = flowcache_record_lookup(src, rec->src_port, rec->dst_port);
+	if (record != NULL)
+	{
+		DPRINTF("found cached flow for %p/hashv:%d\n", rec, hashv);
+		return record;
+	}
+
+	record = src->flows[hashv] =
+		flowcache_record_insert(src->flows[hashv], rec->src_port, rec->dst_port);
+
+	return record;
+}
+
+static flowcache_record_t *
 flowcache_correlate_v5(netflow_v5rec_t *rec)
 {
 	flowcache_src_host_t *src;
@@ -306,6 +358,94 @@ flowcache_correlate_v5(netflow_v5rec_t *rec)
  *****************************************************************************************/
 
 typedef void (*netflow_parse_f)(unsigned char *pkt, packet_info_t *info);
+
+static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
+{
+	int flow;
+	netflow_v1hdr_t *hdr = (netflow_v1hdr_t *) pkt;
+	netflow_v1rec_t *rec = NULL;
+
+	hdr->flowcount = ntohs(hdr->flowcount);
+	hdr->uptime = ntohl(hdr->uptime);
+	hdr->unix_ts = ntohl(hdr->unix_ts);
+	hdr->unix_tns = ntohl(hdr->unix_tns);
+
+	DPRINTF("  Number of exported flows: %u\n", hdr->flowcount);
+	DPRINTF("  Uptime                  : %u ms\n", hdr->uptime);
+	DPRINTF("  Epoch                   : %u.%u\n", hdr->unix_ts, hdr->unix_tns);
+
+	for (flow = 0, rec = (netflow_v1rec_t *) (pkt + sizeof(netflow_v1hdr_t));
+	     flow < hdr->flowcount; flow++, rec++)
+	{
+		packet_info_t inject;
+
+		rec->src_port = ntohs(rec->src_port);
+		rec->dst_port = ntohs(rec->dst_port);
+
+		rec->packets = ntohl(rec->packets);
+		rec->bytes = ntohl(rec->bytes);
+
+		rec->first_ts = ntohl(rec->first_ts) / 1000;
+		rec->last_ts = ntohl(rec->last_ts) / 1000;
+
+#ifdef DEBUG
+		static char srcbuf[INET6_ADDRSTRLEN];
+		static char dstbuf[INET6_ADDRSTRLEN];
+
+		inet_ntop(AF_INET, &rec->src, srcbuf, INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET, &rec->dst, dstbuf, INET6_ADDRSTRLEN);
+
+		DPRINTF("  Flow %d, %s/%d -> %s/%d [%s] {0x%x} (%d bytes, %d packets)\n", flow,
+			srcbuf, rec->src_port, dstbuf, rec->dst_port, protonames[rec->proto],
+			rec->tcp_flags, rec->bytes, rec->packets);
+#endif
+
+		flowcache_record_t *crec;
+
+		crec = flowcache_correlate_v1(rec);
+
+		int fakebps = (rec->bytes - crec->bytes);
+		int fakepps = (rec->packets - crec->packets);
+
+		/* nenolod:
+		 * it seems that sometimes the netflow counters go backward... we don't want
+		 * to go backward, although our state machine seems to not care much about it.
+		 */
+		if (fakebps < 0 || fakepps < 1)
+			continue;
+
+		DPRINTF("    Flow fakepps: (%d - %d) = %d\n", rec->packets, crec->packets, fakepps);
+		DPRINTF("    Flow fakebps: (%d - %d) = %d\n", rec->bytes, crec->bytes, fakebps);
+
+		inject = (packet_info_t){
+			.pkt_src = rec->src,
+			.pkt_dst = rec->dst,
+			.src_prt = rec->src_port,
+			.dst_prt = rec->dst_port,
+			.ether_type = 8,
+			.ip_type = rec->proto != 0 ? rec->proto : NETFLOW_PROTO_TCP,
+			.len = fakebps,
+			.packets = fakepps,
+			.tcp_flags = rec->tcp_flags,
+			.new_flow = !crec->injected,
+		};
+
+		/* if flow is pre-cached, or small, then inject it. */
+		if ((crec->bytes != 0 || crec->packets != 0))
+		{
+			crec->injected = true;
+			ipstate_update(&inject);
+		}
+		else if ((rec->bytes <= 1024 && rec->packets <= 20))
+		{
+			crec->injected = true;
+			ipstate_update(&inject);
+		}
+
+		crec->bytes = rec->bytes;
+		crec->packets = rec->packets;
+	}
+}
 
 static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 {
@@ -405,6 +545,7 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 }
 
 static netflow_parse_f pfunc[NETFLOW_MAX_VERSION] = {
+	[NETFLOW_VERSION_1] = netflow_parse_v1,
 	[NETFLOW_VERSION_5] = netflow_parse_v5,
 	[NETFLOW_VERSION_9] = netflow_parse_v9,
 };
