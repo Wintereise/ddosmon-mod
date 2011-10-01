@@ -95,7 +95,7 @@ static const char *protonames[NETFLOW_MAX_PROTO + 1] = {
  *****************************************************************************************/
 
 #define FLOW_HASH_SIZE		65536 >> 12
-#define FLOW_HASH(src_port)	((src_port) >> 12)
+#define FLOW_HASH(src_port)	(src_port % FLOW_HASH_SIZE)
 
 typedef struct _flowrecord {
 	struct _flowrecord *prev, *next;
