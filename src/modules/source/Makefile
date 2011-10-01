@@ -3,5 +3,5 @@ MODULE = source
 include ../../../buildsys.mk
 include ../../../buildsys.module.mk
 
-CFLAGS += -I../..
+CPPFLAGS += -I../..
 SRCS = netflow.c pcap.c
