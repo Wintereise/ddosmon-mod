@@ -101,6 +101,15 @@ typedef struct {
 	uint16_t pad2;
 } netflow_v5rec_t;
 
+typedef struct {
+	uint16_t version;
+	uint16_t flowcount;
+	uint32_t uptime;
+	uint32_t unix_ts;
+	uint32_t sequence;
+	uint32_t source_id;
+} netflow_v9hdr_t;
+
 typedef enum {
 	NETFLOW_VERSION_1 = 1,
 	NETFLOW_VERSION_5 = 5,
@@ -541,7 +550,20 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 {
-	DPRINTF("Todo: %s\n", "implement me");
+	int flow;
+	netflow_v9hdr_t *hdr = (netflow_v9hdr_t *) pkt;
+
+	hdr->flowcount = ntohs(hdr->flowcount);
+	hdr->uptime = ntohl(hdr->uptime);
+	hdr->unix_ts = ntohl(hdr->unix_ts);
+	hdr->sequence = ntohl(hdr->sequence);
+	hdr->source_id = ntohl(hdr->source_id);
+
+	DPRINTF("  Number of exported flows: %u\n", hdr->flowcount);
+	DPRINTF("  Uptime                  : %u ms\n", hdr->uptime);
+	DPRINTF("  Epoch                   : %u\n", hdr->unix_ts);
+	DPRINTF("  Sequence                : %u\n", hdr->sequence);
+	DPRINTF("  Source ID               : %u\n", hdr->source_id);
 }
 
 static netflow_parse_f pfunc[NETFLOW_MAX_VERSION] = {
