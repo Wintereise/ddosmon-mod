@@ -8,6 +8,7 @@
  * AUTHORIZATION MAY RESULT IN CIVIL AND/OR CRIMINAL PENALTIES.
  */
 
+#define DEBUG
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -109,6 +110,21 @@ typedef struct {
 	uint32_t sequence;
 	uint32_t source_id;
 } netflow_v9hdr_t;
+
+typedef struct {
+	uint16_t flowset_id;
+	uint16_t length;
+} netflow_v9flowset_t;
+
+typedef struct {
+	uint16_t tmpl_id;
+	uint16_t fieldcount;
+} netflow_v9tmpl_t;
+
+typedef struct {
+	uint16_t field_id;
+	uint16_t length;
+} netflow_v9tmpl_cursor_t;
 
 typedef enum {
 	NETFLOW_VERSION_1 = 1,
@@ -550,8 +566,10 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 {
-	int flow;
+	uint8_t *bufiter, *bufstart;
+	unsigned int flow;
 	netflow_v9hdr_t *hdr = (netflow_v9hdr_t *) pkt;
+	netflow_v9flowset_t *fshdr = NULL;
 
 	hdr->flowcount = ntohs(hdr->flowcount);
 	hdr->uptime = ntohl(hdr->uptime);
@@ -564,6 +582,57 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 	DPRINTF("  Epoch                   : %u\n", hdr->unix_ts);
 	DPRINTF("  Sequence                : %u\n", hdr->sequence);
 	DPRINTF("  Source ID               : %u\n", hdr->source_id);
+
+	for (flow = 0, fshdr = (netflow_v9flowset_t *) (pkt + sizeof(netflow_v9hdr_t));
+	     ((uint8_t *) fshdr - pkt) < info->len; flow++)
+	{
+		DPRINTF("  Flow %u [%ld]:\n", flow, ((uint8_t *) fshdr - pkt));
+
+		fshdr->flowset_id = ntohs(fshdr->flowset_id);
+		fshdr->length = ntohs(fshdr->length);
+
+		DPRINTF("    Flowset ID            : %u\n", fshdr->flowset_id);
+		DPRINTF("    Length                : %u\n", fshdr->length);
+
+		/* per RFC3954: "FlowSet ID value of 0 is reserved for the Template FlowSet." */
+		if (!fshdr->flowset_id)
+		{
+			bool parsedone = false;
+
+			DPRINTF("    Flowset type          : %s\n", "TEMPLATE");
+
+			bufiter = (uint8_t *) fshdr;
+			bufiter += sizeof(netflow_v9flowset_t);
+			bufstart = bufiter;
+
+			while (!parsedone && ((bufiter - pkt) < info->len))
+			{
+				netflow_v9tmpl_t *tmpl = (netflow_v9tmpl_t *) bufiter;
+
+				tmpl->tmpl_id = ntohs(tmpl->tmpl_id);
+				tmpl->fieldcount = ntohs(tmpl->fieldcount);
+
+				DPRINTF("      Template ID         : %u\n", tmpl->tmpl_id);
+				DPRINTF("      Field Count         : %u\n", tmpl->fieldcount);
+
+				bufiter += sizeof(netflow_v9tmpl_t);
+
+				if ((bufiter - bufstart) <= fshdr->length)
+				{
+					DPRINTF("Parsing done at %lu bytes\n", (bufiter - pkt));
+					parsedone = true;
+				}
+			}
+		}
+		else
+		{
+			DPRINTF("    Flowset type          : %s\n", "DATA");
+		}
+
+		bufiter = (uint8_t *) fshdr;
+		bufiter += fshdr->length;
+		fshdr = (netflow_v9flowset_t *) bufiter;
+	}
 }
 
 static netflow_parse_f pfunc[NETFLOW_MAX_VERSION] = {
@@ -607,7 +676,7 @@ netflow_readpkt(packet_info_t *info)
 	cmn = (netflow_common_t *) pkt;
 	cmn->version = ntohs(cmn->version);
 
-	DPRINTF("Netflow version %d.\n", cmn->version);
+	DPRINTF("Netflow version %d (len %d).\n", cmn->version, len);
 	if (pfunc[cmn->version] != NULL)
 		pfunc[cmn->version](pkt, info);
 
