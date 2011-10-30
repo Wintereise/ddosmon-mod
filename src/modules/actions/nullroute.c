@@ -203,11 +203,67 @@ ssh_session_term(transport_session_t *session)
 	free(session);
 }
 
+/************************************************************************************
+ * telnet transport definition                                                      *
+ ************************************************************************************/
+static transport_session_t *
+telnet_session_setup(target_t *target)
+{
+	transport_session_t *session;
+
+	session = calloc(sizeof(transport_session_t), 1);
+	session->method = PROTO_TELNET;
+
+	session->transport.telnet.sock = open_socket(target->host, target->port);
+
+	write(session->transport.telnet.sock, target->user, strlen(target->user));
+	write(session->transport.telnet.sock, "\n", 1);
+
+	write(session->transport.telnet.sock, target->pass, strlen(target->pass));
+	write(session->transport.telnet.sock, "\n", 1);
+
+	return session;
+}
+
+static int
+telnet_session_writef(transport_session_t *session, const char *fmt, ...)
+{
+	char *line;
+	size_t len;
+	va_list va;
+	int ret;
+
+	va_start(va, fmt);
+	len = vasprintf(&line, fmt, va);
+	va_end(va);
+
+	DPRINTF("writing [\n%s] = ", line);
+	ret = write(session->transport.telnet.sock, line, len);
+	DPRINTF("%d\n", ret);
+
+	free(line);
+
+	return len;
+}
+
+static void
+telnet_session_term(transport_session_t *session)
+{
+	close(session->transport.telnet.sock);
+
+	free(session);
+}
+
 static transport_handlers_t transport_handlers[PROTO_MAX] = {
 	[PROTO_SSH] = {
 		.setup = ssh_session_setup,
 		.writef = ssh_session_writef,
 		.term = ssh_session_term,
+	},
+	[PROTO_TELNET] = {
+		.setup = telnet_session_setup,
+		.writef = telnet_session_writef,
+		.term = telnet_session_term,
 	},
 };
 
