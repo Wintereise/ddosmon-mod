@@ -77,6 +77,7 @@ pcap_readpkt(packet_info_t *info)
 		info->packets = 1;
 		info->len = hdr.len;
 		info->ts = hdr.ts;
+		info->new_flow = 0;
 	}
 
 	return pkt;
