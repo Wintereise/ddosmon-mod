@@ -112,7 +112,7 @@ ipstate_update(packet_info_t *packet)
 
 		inet_ntop(AF_INET, &packet->pkt_dst, dst, INET6_ADDRSTRLEN);
 
-		DPRINTF("      IP %s has received %ld bytes/%ld packets. (+%ld B/+%ld P) %f kbps %ld pps %ld active\n", dst,
+		DPRINTF("      IP %s has received %ld bytes/%ld packets. (+%d B/+%d P) %f kbps %d pps %d active\n", dst,
 			rec->flows[packet->ip_type].bytes, rec->flows[packet->ip_type].packets, packet->len, packet->packets, rec->flows[packet->ip_type].flow / 1000., rec->flows[packet->ip_type].pps,
 			rec->flows[packet->ip_type].count);
 #endif
