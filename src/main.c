@@ -27,7 +27,6 @@ hook_t *hook_list[MAX_HOOKS];
 #ifdef DEBUG
 #undef HAVE_FORK
 #endif
-#undef HAVE_FORK
 
 static void
 daemonize(const char *b_wm)
