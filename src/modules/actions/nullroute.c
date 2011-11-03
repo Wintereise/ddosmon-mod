@@ -277,7 +277,7 @@ rtr_cisco_converse(actiontype_t act, transport_session_t *session, transport_han
 	}
 
 	handlers->writef(session, "conf t\n");
-	handlers->writef(session, "%sip route %s 255.255.255.255 Null0 tag %d\n", act == ACTION_UNBAN ? "no " : "", ipbuf, target->nullroute_tag);
+	handlers->writef(session, "%sip route %s 255.255.255.255 Null0%s%d\n", act == ACTION_UNBAN ? "no " : "", ipbuf, target->nullroute_tag != 0 ? " tag " : "");
 	handlers->writef(session, "exit\n");
 	handlers->writef(session, "exit\n");
 }
