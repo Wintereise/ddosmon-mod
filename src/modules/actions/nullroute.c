@@ -365,6 +365,7 @@ parse_target(const char *host, config_entry_t *entry)
 	target->port = router_port;
 	target->proto = router_proto;
 	target->rtr_type = router_type;
+	target->nullroute_tag = nullroute_tag;
 
 	for (ce = entry; ce != NULL; ce = ce->ce_next)
 	{
