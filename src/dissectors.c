@@ -62,7 +62,7 @@ dissect_ip(packet_info_t *info, const unsigned char *packet)
 	char dstbuf[INET6_ADDRSTRLEN];
 #endif
 	const struct ip_hdr *ip;
-	
+
 	ip = (struct ip_hdr *)(packet);
 	if (SIZE_IP(ip) < 20)
 		return;
