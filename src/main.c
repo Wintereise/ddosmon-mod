@@ -93,7 +93,6 @@ main(int argc, const char *argv[])
 	daemonize(build_watermark);
 
 	init_ipstate();
-	init_dissectors();
 
 	conf_process();
 	if (ev == NULL)
@@ -107,8 +106,6 @@ main(int argc, const char *argv[])
 		packet_info_t info;
 
 		pkt = ev->read(&info);
-		if (pkt != NULL)
-			dissect_ethernet(&info, pkt);
 
 		cachetime = time(NULL);
 		HOOK_CALL(HOOK_TIMER_TICK, cachetime);
