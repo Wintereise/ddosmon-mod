@@ -270,8 +270,12 @@ static transport_handlers_t transport_handlers[PROTO_MAX] = {
 static void
 rtr_cisco_converse(actiontype_t act, transport_session_t *session, transport_handlers_t *handlers, target_t *target, const char *ipbuf)
 {
-	handlers->writef(session, "enable\n");
-	handlers->writef(session, "%s\n", target->enable_pass);
+	if (target->enable_pass != NULL)
+	{
+		handlers->writef(session, "enable\n");
+		handlers->writef(session, "%s\n", target->enable_pass);
+	}
+
 	handlers->writef(session, "conf t\n");
 	handlers->writef(session, "%sip route %s 255.255.255.255 Null0 tag %d\n", act == ACTION_UNBAN ? "no " : "", ipbuf, target->nullroute_tag);
 	handlers->writef(session, "exit\n");
@@ -306,6 +310,8 @@ trigger_nullroute(actiontype_t act, packet_info_t *packet, iprecord_t *irec, voi
 	{
 		transport_session_t *session;
 		transport_handlers_t *handlers = &transport_handlers[it->proto];
+
+		DPRINTF("setting up session for target %s\n", it->host);
 
 		session = handlers->setup(it);
 		if (session == NULL)
