@@ -257,7 +257,7 @@ telnet_session_term(transport_session_t *session)
 	char buf[1];
 
 	while (read(session->transport.telnet.sock, buf, 1))
-		putchar(buf);
+		putchar(buf[0]);
 #endif
 
 	close(session->transport.telnet.sock);
