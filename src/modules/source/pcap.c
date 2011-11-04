@@ -168,7 +168,7 @@ set_pcap_filter(pcap_t *handle, const char *filter, uint32_t netmask)
 	}
 }
 
-static void
+static int
 pcap_prepare(void)
 {
 	handle = open_interface(interface);
@@ -176,10 +176,12 @@ pcap_prepare(void)
 
 	set_pcap_filter(handle, pcapfilter, 0);
 	DPRINTF("set pcap filter %s\n", pcapfilter);
+
+	return pcap_get_selectable_fd(handle);
 }
 
 static const unsigned char *
-pcap_readpkt(packet_info_t *info)
+pcap_readpkt(int fd, packet_info_t *info)
 {
 	struct pcap_pkthdr hdr;
 	const unsigned char *pkt;
@@ -201,7 +203,7 @@ pcap_readpkt(packet_info_t *info)
 }
 
 static void
-pcap_shutdown(void)
+pcap_shutdown(int fd)
 {
 	pcap_close(handle);
 }

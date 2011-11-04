@@ -72,6 +72,7 @@ get_time(void)
 int
 main(int argc, const char *argv[])
 {
+	int fd;
 	static char *build_watermark = WATERMARK;
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
@@ -98,20 +99,20 @@ main(int argc, const char *argv[])
 	if (ev == NULL)
 		return EXIT_FAILURE;
 
-	ev->prepare();
+	fd = ev->prepare();
 
 	for (;;)
 	{
 		const unsigned char *pkt;
 		packet_info_t info;
 
-		pkt = ev->read(&info);
+		pkt = ev->read(fd, &info);
 
 		cachetime = time(NULL);
 		HOOK_CALL(HOOK_TIMER_TICK, cachetime);
 	}
 
-	ev->shutdown();
+	ev->shutdown(fd);
 
 	return EXIT_SUCCESS;
 }

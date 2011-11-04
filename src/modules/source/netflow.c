@@ -29,7 +29,6 @@
 
 #define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
 
-static int sock;
 static unsigned int bind_port = 9996;
 
 /*****************************************************************************************
@@ -641,9 +640,11 @@ static netflow_parse_f pfunc[NETFLOW_MAX_VERSION] = {
 	[NETFLOW_VERSION_9] = netflow_parse_v9,
 };
 
-static void
+static int
 netflow_prepare(void)
 {
+	int sock;
+
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 
 	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(bind_port) };
@@ -655,20 +656,22 @@ netflow_prepare(void)
 
 	HOOK_REGISTER(HOOK_TIMER_TICK, flowcache_clear);
 	flowcache_next_clear = get_time() + FLOW_EXPIRY_TIME;
+
+	return sock;
 }
 
 static const unsigned char *
-netflow_readpkt(packet_info_t *info)
+netflow_readpkt(int fd, packet_info_t *info)
 {
 	unsigned int len;
 	unsigned char pkt[BUFSIZ];
 	netflow_common_t *cmn;
 
 #if 0
-	DPRINTF("reading udp/%d\n", sock);
+	DPRINTF("reading udp/%d\n", fd);
 #endif
 
-	len = recv(sock, pkt, BUFSIZ, 0);
+	len = recv(fd, pkt, BUFSIZ, 0);
 	info->len = len;
 	info->ts.tv_sec = time(NULL);
 
@@ -688,9 +691,9 @@ netflow_readpkt(packet_info_t *info)
 }
 
 static void
-netflow_shutdown(void)
+netflow_shutdown(int fd)
 {
-	close(sock);
+	close(fd);
 }
 
 static eventsource_t netflow_eventsource = {
