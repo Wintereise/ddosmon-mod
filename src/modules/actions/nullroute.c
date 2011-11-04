@@ -14,6 +14,10 @@
 
 #include <libssh2.h>
 
+#ifdef DEBUG
+#define DEBUG_VTY_RESPONSE
+#endif
+
 /* defaults */
 static char *router_ssh_user, *router_ssh_pass, *router_host, *router_enable_pass;
 static int router_port = 22, nullroute_tag = 666;
@@ -249,6 +253,13 @@ telnet_session_writef(transport_session_t *session, const char *fmt, ...)
 static void
 telnet_session_term(transport_session_t *session)
 {
+#ifdef DEBUG_VTY_RESPONSE
+	char buf[1];
+
+	while (read(session->transport.telnet.sock, buf, 1))
+		putchar(buf);
+#endif
+
 	close(session->transport.telnet.sock);
 
 	free(session);
