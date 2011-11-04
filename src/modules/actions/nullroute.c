@@ -210,19 +210,6 @@ ssh_session_term(transport_session_t *session)
 /************************************************************************************
  * telnet transport definition                                                      *
  ************************************************************************************/
-static inline void
-telnet_consume_buffer(transport_session_t *session)
-{
-	char buf[1];
-
-	while (read(session->transport.telnet.sock, buf, 1))
-	{
-#ifdef DEBUG_VTY_RESPONSE
-		putchar(buf[0]);
-#endif
-	}
-}
-
 static transport_session_t *
 telnet_session_setup(target_t *target)
 {
@@ -233,12 +220,8 @@ telnet_session_setup(target_t *target)
 
 	session->transport.telnet.sock = open_socket(target->host, target->port);
 
-	telnet_consume_buffer(session);
-
 	write(session->transport.telnet.sock, target->user, strlen(target->user));
 	write(session->transport.telnet.sock, "\n", 1);
-
-	telnet_consume_buffer(session);
 
 	write(session->transport.telnet.sock, target->pass, strlen(target->pass));
 	write(session->transport.telnet.sock, "\n", 1);
@@ -264,15 +247,20 @@ telnet_session_writef(transport_session_t *session, const char *fmt, ...)
 
 	free(line);
 
-	telnet_consume_buffer(session);
-
 	return len;
 }
 
 static void
 telnet_session_term(transport_session_t *session)
 {
-	telnet_consume_buffer(session);
+	char buf[1];
+
+	while (read(session->transport.telnet.sock, buf, 1))
+	{
+#ifdef DEBUG_VTY_RESPONSE
+		putchar(buf[0]);
+#endif
+	}
 
 	close(session->transport.telnet.sock);
 
