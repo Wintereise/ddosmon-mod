@@ -126,7 +126,7 @@ expire_triggers(void)
 		if (get_time() < (rec->added + expiry))
 			continue;
 
-		if (!rec->t->expiry || get_time() < (rec->added + rec->t->expiry))
+		if (rec->t->expiry && get_time() < (rec->added + rec->t->expiry))
 			continue;
 
 		run_triggers(ACTION_UNBAN, rec->t, &rec->pkt, &rec->irec);
