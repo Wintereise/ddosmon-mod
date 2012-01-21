@@ -11,7 +11,6 @@
 void
 module_open(const char *name, config_entry_t *ce)
 {
-	module_cons_f mcf;
 	void *dlptr;
 	char path[16384];
 
