@@ -4305,18 +4305,12 @@ $as_echo "GNU" >&6; }
 if test "${with_watermark+set}" = set; then :
   withval=$with_watermark; watermark=$withval
 else
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "watermark is required to build the software
-See \`config.log' for more details" "$LINENO" 5; }
+  watermark="default")
 fi
 
 
 if test "x$with_watermark" == "xyes"; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "Please pass a watermark to build the software
-See \`config.log' for more details" "$LINENO" 5; }
+  watermark="default"
 fi
 
 

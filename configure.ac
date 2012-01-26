@@ -35,10 +35,10 @@ BUILDSYS_TOUCH_DEPS
 AC_ARG_WITH([watermark],
 	    AC_HELP_STRING([--with-watermark], [String to use for watermark]),
 	    [watermark=$withval],
-	    [AC_MSG_FAILURE([watermark is required to build the software])])
+	    [watermark="default")])
 
 AS_IF([test "x$with_watermark" == "xyes"],
-      [AC_MSG_FAILURE([Please pass a watermark to build the software])],
+      [watermark="default"],
       [])
 
 AC_DEFINE_UNQUOTED(WATERMARK, ["$with_watermark"], [Build watermark identifier])
