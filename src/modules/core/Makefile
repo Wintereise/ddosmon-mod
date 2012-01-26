@@ -5,4 +5,4 @@ include ../../../buildsys.module.mk
 
 CPPFLAGS += -I../..
 LIBS += -lm
-SRCS = exempts.c triggers.c
+SRCS = dynamic.c exempts.c triggers.c
