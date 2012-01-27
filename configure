@@ -4305,7 +4305,7 @@ $as_echo "GNU" >&6; }
 if test "${with_watermark+set}" = set; then :
   withval=$with_watermark; watermark=$withval
 else
-  watermark="default")
+  watermark="default"
 fi
 
 
@@ -4315,7 +4315,7 @@ fi
 
 
 cat >>confdefs.h <<_ACEOF
-#define WATERMARK "$with_watermark"
+#define WATERMARK "$watermark"
 _ACEOF
 
 

@@ -35,13 +35,13 @@ BUILDSYS_TOUCH_DEPS
 AC_ARG_WITH([watermark],
 	    AC_HELP_STRING([--with-watermark], [String to use for watermark]),
 	    [watermark=$withval],
-	    [watermark="default")])
+	    [watermark="default"])
 
 AS_IF([test "x$with_watermark" == "xyes"],
       [watermark="default"],
       [])
 
-AC_DEFINE_UNQUOTED(WATERMARK, ["$with_watermark"], [Build watermark identifier])
+AC_DEFINE_UNQUOTED(WATERMARK, ["$watermark"], [Build watermark identifier])
 
 AC_CONFIG_FILES([buildsys.mk extra.mk])
 AC_OUTPUT
