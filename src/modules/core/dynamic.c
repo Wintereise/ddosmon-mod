@@ -30,6 +30,8 @@
 #include "hook.h"
 #include "action.h"
 
+static unsigned int default_minimum_flows, default_minimum_pps, default_minimum_mbps;
+
 typedef struct _triggeraction {
 	struct _triggeraction *next;
 	action_t *act;
@@ -43,6 +45,10 @@ typedef struct _trigger {
 
 	unsigned char protocol;
 	unsigned int expiry;
+
+	unsigned int minimum_flows;
+	unsigned int minimum_pps;
+	unsigned int minimum_mbps;
 
 	triggeraction_t *list;
 } trigger_t;
@@ -189,6 +195,15 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 		if (i->flow_pps_ratio > 0.0 && i->flow_pps_ratio < pps_ratio)
 			do_trigger = 1;
 
+		if (i->minimum_flows && i->minimum_flows > rec->flows[packet->ip_type].count)
+			do_trigger = 0;
+
+		if (i->minimum_mbps && i->minimum_mbps > mbps)
+			do_trigger = 0;
+
+		if (i->minimum_pps && i->minimum_pps > pps)
+			do_trigger = 0;
+
 		DPRINTF("trigger %p conditions %s for flow %p\n", i, do_trigger == 1 ? "met" : "not met", rec);
 
 		if (do_trigger)
@@ -229,6 +244,9 @@ parse_trigger(config_entry_t *entry)
 	config_entry_t *ce;
 
 	t = calloc(sizeof(trigger_t), 1);
+	t->minimum_flows = default_minimum_flows;
+	t->minimum_mbps = default_minimum_mbps;
+	t->minimum_pps = default_minimum_pps;
 
 	for (ce = entry; ce != NULL; ce = ce->ce_next)
 	{
@@ -249,6 +267,12 @@ parse_trigger(config_entry_t *entry)
 			t->flow_mbps_ratio = (float) atof(ce->ce_vardata);
 		else if (!strcasecmp(ce->ce_varname, "pps_ratio"))
 			t->flow_pps_ratio = (float) atof(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_flows"))
+			t->minimum_flows = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_mbps"))
+			t->minimum_mbps = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_pps"))
+			t->minimum_pps = atoi(ce->ce_vardata);
 		else if (!strcasecmp(ce->ce_varname, "expiry"))
 			t->expiry = atoi(ce->ce_vardata);
 		else if (!strcasecmp(ce->ce_varname, "actions"))
@@ -274,6 +298,12 @@ module_cons(config_entry_t *entry)
 			parse_trigger(ce->ce_entries);
 		else if (!strcasecmp(ce->ce_varname, "expiry"))
 			expiry = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_flows"))
+			default_minimum_flows = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_mbps"))
+			default_minimum_mbps = atoi(ce->ce_vardata);
+		else if (!strcasecmp(ce->ce_varname, "minimum_pps"))
+			default_minimum_pps = atoi(ce->ce_vardata);
 	}
 
 	banrecord_trie = New_Patricia(32);
