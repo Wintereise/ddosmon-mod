@@ -180,8 +180,8 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 		mbps = (int) floor((rec->flows[packet->ip_type].flow / 1000000.));
 		pps = rec->flows[packet->ip_type].pps;
 
-		mbps_ratio = (float) ((rec->flows[packet->ip_type].count) / mbps);
-		pps_ratio = (float) ((rec->flows[packet->ip_type].count) / pps);
+		mbps_ratio = (float) ((rec->flows[packet->ip_type].count + 1) / (mbps + 1));
+		pps_ratio = (float) ((rec->flows[packet->ip_type].count + 1) / (pps + 1));
 
 		if (i->flow_mbps_ratio > 0.0 && i->flow_mbps_ratio < mbps_ratio)
 			do_trigger = 1;
