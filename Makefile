@@ -1,7 +1,7 @@
+SUBDIRS = src
+
 include extra.mk
 include buildsys.mk
-
-SUBDIRS = src
 
 install-extra:
 	for i in ddosmon.conf; do \

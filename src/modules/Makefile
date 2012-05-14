@@ -1,3 +1,3 @@
-include ../../buildsys.mk
-
 SUBDIRS = source core actions
+
+include ../../buildsys.mk

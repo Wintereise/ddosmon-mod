@@ -1,36 +1,16 @@
-#
-# Copyright (c) 2007 - 2011 William Pitcock <nenolod@atheme.org>.
-#
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice is present in all copies.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-
 # Additional extensions for building single-file modules.
-
 .SUFFIXES: $(PLUGIN_SUFFIX)
 
-plugindir = ${prefix}/modules/$(MODULE)
+plugindir = ${MODDIR}/modules/$(MODULE)
 PLUGIN=${SRCS:.c=$(PLUGIN_SUFFIX)}
 
-.c$(PLUGIN_SUFFIX):
-	${COMPILE_STATUS}
-	if ${CC} ${PLUGIN_CFLAGS} ${PLUGIN_LDFLAGS} ${CFLAGS} ${CPPFLAGS} ${LIBS} -o $@ $<; then \
-		${COMPILE_OK}; \
-	else \
-		${COMPILE_FAILED}; \
-	fi
+all: $(PLUGIN)
+install: $(PLUGIN)
 
-COMPILE_OK = printf "\033[K\033[0;32mSuccessfully compiled \033[1;32m$<\033[0;32m as \033[1;32m$@\033[0;32m.\033[0m\n"
+phase_cmd_cc_module = CompileModule
+quiet_cmd_cc_module = $@
+      cmd_cc_module = ${CC} ${CFLAGS} ${PLUGIN_CFLAGS} ${CPPFLAGS} ${PLUGIN_LDFLAGS} ${LDFLAGS} -o $@ $< ${LIBS}
+
+.c$(PLUGIN_SUFFIX):
+	$(call echo-cmd,cmd_cc_module)
+	$(cmd_cc_module)
