@@ -17,16 +17,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+#include <mowgli.h>
 #include <pcap.h>
 #include <arpa/inet.h>
-#include <time.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <errno.h>
 
 /*
  * Configuration parameters.

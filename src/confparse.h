@@ -3,8 +3,8 @@
  * Rights to this code are as documented in doc/LICENSE.
  */
 
-#ifndef CONFPARSE_H
-#define CONFPARSE_H
+#ifndef DDOSMON_CONFPARSE_H
+#define DDOSMON_CONFPARSE_H
 
 typedef struct _configfile config_file_t;
 typedef struct _configentry config_entry_t;

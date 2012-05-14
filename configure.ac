@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.64])
-AC_INIT([ddosmon], [2.0], [nenolod@systeminplace.net])
+AC_INIT([ddosmon], [3.0], [nenolod@systeminplace.net])
 AC_CONFIG_SRCDIR([src/stdinc.h])
 AC_CONFIG_HEADERS([src/autoconf.h])
 
@@ -27,6 +27,9 @@ AC_TYPE_UINT32_T
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([dup2 memset socket strcasecmp strchr strdup strerror strrchr getrlimit])
+
+PKG_CHECK_MODULES(MOWGLI, [libmowgli-2 >= 2.0])
+PKG_CHECK_MODULES(LIBSSH2, [libssh2])
 
 BUILDSYS_INIT
 BUILDSYS_SHARED_LIB
