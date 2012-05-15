@@ -58,4 +58,4 @@ extern time_t get_time(void);
 extern size_t strlcat(char *dest, const char *src, size_t count);
 extern size_t strlcpy(char *dest, const char *src, size_t count);
 
-extern void module_cons(config_entry_t *ce);
+extern void module_cons(mowgli_eventloop_t *eventloop, config_entry_t *ce);

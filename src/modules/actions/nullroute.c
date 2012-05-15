@@ -426,7 +426,7 @@ parse_target(const char *host, config_entry_t *entry)
 }
 
 void
-module_cons(config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
 {
 	config_entry_t *ce;
 

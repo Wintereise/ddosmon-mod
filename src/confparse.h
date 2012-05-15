@@ -36,6 +36,6 @@ struct _configentry
 void config_free(config_file_t *cfptr);
 config_file_t *config_load(const char *filename);
 
-void conf_process(void);
+void conf_process(mowgli_eventloop_t *eventloop);
 
 #endif

@@ -34,8 +34,6 @@
 # include <sys/resource.h>
 #endif
 
-extern void conf_process(void);
-
 eventsource_t *ev = NULL;
 hook_t *hook_list[MAX_HOOKS];
 
@@ -88,6 +86,7 @@ int
 main(int argc, const char *argv[])
 {
 	int fd;
+	mowgli_eventloop_t *eventloop;
 	static char *build_watermark = WATERMARK;
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
@@ -108,12 +107,15 @@ main(int argc, const char *argv[])
 
 	daemonize(build_watermark);
 
+	eventloop = mowgli_eventloop_create();
+
 	init_ipstate();
 
-	conf_process();
+	conf_process(eventloop);
 	if (ev == NULL)
 		return EXIT_FAILURE;
 
+#if 0
 	fd = ev->prepare();
 
 	for (;;)
@@ -128,6 +130,8 @@ main(int argc, const char *argv[])
 	}
 
 	ev->shutdown(fd);
+#endif
+	mowgli_eventloop_run(eventloop);
 
 	return EXIT_SUCCESS;
 }

@@ -30,7 +30,7 @@
 #include "modulefactory.h"
 
 void
-conf_process(void)
+conf_process(mowgli_eventloop_t *eventloop)
 {
 	const char *path = CONFIGFILE;
 	config_file_t *cf;
@@ -45,7 +45,7 @@ conf_process(void)
 	for (ce = cf->cf_entries; ce != NULL; ce = ce->ce_next)
 	{
 		if (!strcasecmp(ce->ce_varname, "module"))
-			module_open(ce->ce_vardata, ce->ce_entries);
+			module_open(eventloop, ce->ce_vardata, ce->ce_entries);
 	}
 
 	DPRINTF("Config parsing %s completed\n", path);

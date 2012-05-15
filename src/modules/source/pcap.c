@@ -230,7 +230,7 @@ static eventsource_t pcap_eventsource = {
 };
 
 void
-module_cons(config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
 {
 	config_entry_t *ce;
 

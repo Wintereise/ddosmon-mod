@@ -24,7 +24,7 @@
 #include <dlfcn.h>
 
 void
-module_open(const char *name, config_entry_t *ce)
+module_open(mowgli_eventloop_t *eventloop, const char *name, config_entry_t *ce)
 {
 	void *dlptr;
 	char path[16384];
@@ -56,5 +56,5 @@ module_open(const char *name, config_entry_t *ce)
 		return;
 	}
 
-	u.mcf(ce);
+	u.mcf(eventloop, ce);
 }

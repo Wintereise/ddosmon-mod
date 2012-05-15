@@ -110,7 +110,7 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 }
 
 void
-module_cons(config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
 {
 	config_entry_t *ce;
 
