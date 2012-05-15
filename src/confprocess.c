@@ -27,6 +27,7 @@
 
 #include "stdinc.h"
 #include "modulefactory.h"
+#include "sourcefactory.h"
 
 void
 conf_process(mowgli_eventloop_t *eventloop)
@@ -45,6 +46,8 @@ conf_process(mowgli_eventloop_t *eventloop)
 	{
 		if (!strcasecmp(ce->varname, "module"))
 			module_open(eventloop, ce->vardata, ce->entries);
+		else if (!strcasecmp(ce->varname, "source"))
+			source_open(eventloop, ce->vardata, ce->entries);
 	}
 
 	DPRINTF("Config parsing %s completed\n", path);
