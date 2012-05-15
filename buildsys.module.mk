@@ -1,7 +1,7 @@
 # Additional extensions for building single-file modules.
 .SUFFIXES: $(PLUGIN_SUFFIX)
 
-plugindir = ${MODDIR}/modules/$(MODULE)
+plugindir = $(prefix)/modules/$(MODULE)
 PLUGIN=${SRCS:.c=$(PLUGIN_SUFFIX)}
 
 all: $(PLUGIN)

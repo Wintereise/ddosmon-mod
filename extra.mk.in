@@ -50,3 +50,4 @@ program_transform_name ?= @program_transform_name@
 prefix ?= @prefix@
 MOWGLI_CFLAGS ?= @MOWGLI_CFLAGS@
 MOWGLI_LIBS ?= @MOWGLI_LIBS@
+MODDIR ?= @MODDIR@
