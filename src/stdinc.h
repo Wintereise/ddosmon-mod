@@ -24,6 +24,7 @@
 /*
  * Configuration parameters.
  */
+extern mowgli_eventloop_t *eventloop;
 
 /*
  * Expiry check time.
@@ -33,6 +34,7 @@
 /*
  * enable global DEBUG mode.
  */
+#define DEBUG
 //#undef DEBUG
 
 /*

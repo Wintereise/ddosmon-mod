@@ -227,7 +227,7 @@ pcap_prepare(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 	fd = pcap_get_selectable_fd(handle);
 
 	pollable = mowgli_pollable_create(eventloop, fd, handle);
-	mowgli_eventloop_setselect(eventloop, pollable, MOWGLI_EVENTLOOP_IO_READ, pcap_handle);
+	mowgli_pollable_setselect(eventloop, pollable, MOWGLI_EVENTLOOP_IO_READ, pcap_handle);
 }
 
 void

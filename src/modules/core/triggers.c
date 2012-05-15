@@ -111,7 +111,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	rec->t = t;
 	memcpy(&rec->irec, irec, sizeof(iprecord_t));
 	memcpy(&rec->pkt, packet, sizeof(packet_info_t));
-	rec->added = get_time();
+	rec->added = mowgli_eventloop_get_time(eventloop);
 
 	sin.s_addr = irec->addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
@@ -138,10 +138,10 @@ expire_triggers(void *unused)
 		prefix_t *pfx;
 		patricia_node_t *node;
 
-		if (get_time() < (rec->added + expiry))
+		if (mowgli_eventloop_get_time(eventloop) < (rec->added + expiry))
 			continue;
 
-		if (rec->t->expiry && get_time() < (rec->added + rec->t->expiry))
+		if (rec->t->expiry && mowgli_eventloop_get_time(eventloop) < (rec->added + rec->t->expiry))
 			continue;
 
 		run_triggers(ACTION_UNBAN, rec->t, &rec->pkt, &rec->irec);

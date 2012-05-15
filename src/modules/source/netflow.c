@@ -191,7 +191,7 @@ flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t 
 	if (child->next != NULL)
 		child->next->prev = child;
 
-	child->first_seen = get_time();
+	child->first_seen = mowgli_eventloop_get_time(eventloop);
 
 	child->src_port = src_port;
 	child->dst_port = dst_port;
@@ -317,20 +317,12 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
         free(dst);
 }
 
-static time_t flowcache_next_clear;
-
 static void
 flowcache_clear(void *unused)
 {
 	(void) unused;
 
-	if (get_time() > flowcache_next_clear)
-	{
-		Clear_Patricia(dst_host_tree, (void_fn_t) flowcache_dst_free);
-		flowcache_next_clear = get_time() + FLOW_EXPIRY_TIME;
-
-		DPRINTF("housekeeping complete.  next housekeeping run at %lu\n", (unsigned long) flowcache_next_clear);
-	}
+	Clear_Patricia(dst_host_tree, (void_fn_t) flowcache_dst_free);
 }
 
 /*****************************************************************************************

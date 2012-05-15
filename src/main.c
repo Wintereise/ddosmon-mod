@@ -34,6 +34,7 @@
 #endif
 
 hook_t *hook_list[MAX_HOOKS];
+mowgli_eventloop_t *eventloop;
 
 #ifdef DEBUG
 #undef HAVE_FORK
@@ -75,7 +76,6 @@ int
 main(int argc, const char *argv[])
 {
 	int fd;
-	mowgli_eventloop_t *eventloop;
 	static char *build_watermark = WATERMARK;
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
