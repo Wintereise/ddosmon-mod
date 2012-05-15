@@ -20,7 +20,17 @@
 #include "stdinc.h"
 #include "action.h"
 
-static action_t *a_list = NULL;
+static mowgli_patricia_t *action_list = NULL;
+
+static void
+action_canon(char *str)
+{
+	while (*str)
+	{
+		*str = toupper(*str);
+		str++;
+	}
+}
 
 void
 action_register(const char *action, action_f act, void *data)
@@ -31,21 +41,15 @@ action_register(const char *action, action_f act, void *data)
 	a->act = act;
 	a->action = action;
 	a->data = data;
-	a->next = a_list;
 
-	a_list = a;
+	if (action_list == NULL)
+		action_list = mowgli_patricia_create(action_canon);
+
+	mowgli_patricia_add(action_list, action, a);
 }
 
 action_t *
 action_find(const char *action)
 {
-	action_t *a;
-
-	for (a = a_list; a != NULL; a = a->next)
-	{
-		if (!strcasecmp(a->action, action))
-			return a;
-	}
-
-	return NULL;
+	return mowgli_patricia_retrieve(action_list, action);
 }

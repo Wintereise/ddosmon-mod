@@ -31,8 +31,6 @@ typedef enum {
 typedef void (*action_f)(actiontype_t type, packet_info_t *info, iprecord_t *rec, void *data);
 
 typedef struct _action {
-	struct _action *next;
-
 	const char *action;
 	action_f act;
 	void *data;
