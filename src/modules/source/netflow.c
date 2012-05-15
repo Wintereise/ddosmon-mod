@@ -29,6 +29,7 @@
 #include "eventsource.h"
 #include "patricia.h"
 #include "ipstate.h"
+#include "sourcefactory.h"
 #include "hook.h"
 
 #ifndef BUFSIZ
@@ -36,8 +37,6 @@
 #endif
 
 #define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
-
-static unsigned int bind_port = 9996;
 
 /*****************************************************************************************
  * Netflow packet layout and descriptions.                                               *
@@ -322,8 +321,10 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 static time_t flowcache_next_clear;
 
 static void
-flowcache_clear(void)
+flowcache_clear(void *unused)
 {
+	(void) unused;
+
 	if (get_time() > flowcache_next_clear)
 	{
 		Clear_Patricia(dst_host_tree, (void_fn_t) flowcache_dst_free);
@@ -648,40 +649,28 @@ static netflow_parse_f pfunc[NETFLOW_MAX_VERSION] = {
 	[NETFLOW_VERSION_9] = netflow_parse_v9,
 };
 
-static int
-netflow_prepare(void)
+static void
+netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eventloop_io_dir_t dir, void *userdata)
 {
-	int sock;
-
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
-
-	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(bind_port) };
-	bind(sock, (struct sockaddr *) &sin, sizeof sin);
-
-	DPRINTF("listening on udp port %d\n", bind_port);
-
-	dst_host_tree = New_Patricia(32);
-
-	HOOK_REGISTER(HOOK_TIMER_TICK, flowcache_clear);
-	flowcache_next_clear = get_time() + FLOW_EXPIRY_TIME;
-
-	return sock;
-}
-
-static const unsigned char *
-netflow_readpkt(int fd, packet_info_t *info)
-{
+	mowgli_descriptor_t fd;
 	unsigned int len;
 	unsigned char pkt[BUFSIZ];
 	netflow_common_t *cmn;
+	mowgli_eventloop_pollable_t *pollable = mowgli_eventloop_io_pollable(io);
+	packet_info_t info;
+
+	if (pollable == NULL)
+		return;
+
+	fd = pollable->fd;
 
 #if 0
 	DPRINTF("reading udp/%d\n", fd);
 #endif
 
 	len = recv(fd, pkt, BUFSIZ, 0);
-	info->len = len;
-	info->ts.tv_sec = time(NULL);
+	info.len = len;
+	info.ts.tv_sec = mowgli_eventloop_get_time(eventloop);
 
 	/* parse the header ... */
 	cmn = (netflow_common_t *) pkt;
@@ -689,30 +678,15 @@ netflow_readpkt(int fd, packet_info_t *info)
 
 	DPRINTF("Netflow version %d (len %d).\n", cmn->version, len);
 	if (pfunc[cmn->version] != NULL)
-		pfunc[cmn->version](pkt, info);
-
-	/*
-	 * as netflow is layer-3 oriented, we do not need to parse raw link-layer frames.
-	 * returning NULL will bypass the parser.  --nenolod
-	 */
-	return NULL;
+		pfunc[cmn->version](pkt, &info);
 }
 
 static void
-netflow_shutdown(int fd)
+netflow_prepare(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	close(fd);
-}
-
-static eventsource_t netflow_eventsource = {
-	netflow_prepare,
-	netflow_readpkt,
-	netflow_shutdown
-};
-
-void
-module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
-{
+	mowgli_descriptor_t sock;
+	unsigned int bind_port = 9996;
+	mowgli_eventloop_pollable_t *pollable;
 	mowgli_config_file_entry_t *ce;
 
 	MOWGLI_ITER_FOREACH(ce, entry)
@@ -721,5 +695,22 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			bind_port = atoi(ce->vardata);
 	}
 
-	ev = &netflow_eventsource;
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+
+	struct sockaddr_in sin = { .sin_family = AF_INET, .sin_port = htons(bind_port) };
+	bind(sock, (struct sockaddr *) &sin, sizeof sin);
+
+	DPRINTF("listening on udp port %d\n", bind_port);
+
+	pollable = mowgli_pollable_create(eventloop, sock, NULL);
+	mowgli_pollable_setselect(eventloop, pollable, MOWGLI_EVENTLOOP_IO_READ, netflow_handle);
+}
+
+void
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
+{
+	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, FLOW_EXPIRY_TIME);
+	dst_host_tree = New_Patricia(32);
+
+	source_register("netflow", netflow_prepare);
 }

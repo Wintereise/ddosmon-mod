@@ -145,9 +145,6 @@ init_dissectors(void)
 
 /******************************************************************************************************/
 
-static pcap_t *handle;
-static char *interface, *pcapfilter;
-
 static pcap_t *
 open_interface(const char *interface)
 {
@@ -182,21 +179,11 @@ set_pcap_filter(pcap_t *handle, const char *filter, uint32_t netmask)
 	}
 }
 
-static int
-pcap_prepare(void)
+static void
+pcap_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eventloop_io_dir_t dir, void *userdata)
 {
-	handle = open_interface(interface);
-	DPRINTF("opened pcap/%s as %p\n", interface, handle);
-
-	set_pcap_filter(handle, pcapfilter, 0);
-	DPRINTF("set pcap filter %s\n", pcapfilter);
-
-	return pcap_get_selectable_fd(handle);
-}
-
-static const unsigned char *
-pcap_readpkt(int fd, packet_info_t *info)
-{
+	pcap_t *handle = userdata;
+	packet_info_t info;
 	struct pcap_pkthdr hdr;
 	const unsigned char *pkt;
 
@@ -205,35 +192,23 @@ pcap_readpkt(int fd, packet_info_t *info)
 	pkt = pcap_next(handle, &hdr);
 	if (pkt != NULL)
 	{
-		info->packets = 1;
-		info->len = hdr.len;
-		info->ts = hdr.ts;
-		info->new_flow = 0;
+		info.packets = 1;
+		info.len = hdr.len;
+		info.ts = hdr.ts;
+		info.new_flow = 0;
 
-		dissect_ethernet(info, pkt);
+		dissect_ethernet(&info, pkt);
 	}
-
-	return NULL;
 }
 
-static void
-pcap_shutdown(int fd)
+static int
+pcap_prepare(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	pcap_close(handle);
-}
-
-static eventsource_t pcap_eventsource = {
-	pcap_prepare,
-	pcap_readpkt,
-	pcap_shutdown
-};
-
-void
-module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
-{
+	mowgli_eventloop_pollable_t *pollable;
 	mowgli_config_file_entry_t *ce;
-
-	init_dissectors();
+	pcap_t *handle;
+	char *interface, *pcapfilter;
+	int fd;
 
 	MOWGLI_ITER_FOREACH(ce, entry)
 	{
@@ -244,5 +219,24 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			pcapfilter = strdup(ce->vardata);
 	}
 
-	ev = &pcap_eventsource;
+	handle = open_interface(interface);
+	DPRINTF("opened pcap/%s as %p\n", interface, handle);
+
+	set_pcap_filter(handle, pcapfilter, 0);
+	DPRINTF("set pcap filter %s\n", pcapfilter);
+
+	fd = pcap_get_selectable_fd(handle);
+
+	pollable = mowgli_pollable_create(eventloop, fd, handle);
+	mowgli_eventloop_setselect(eventloop, pollable, MOWGLI_EVENTLOOP_IO_READ, pcap_handle);
+}
+
+void
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
+{
+	mowgli_config_file_entry_t *ce;
+
+	init_dissectors();
+
+	source_register("pcap", pcap_prepare);
 }
