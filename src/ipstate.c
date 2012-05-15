@@ -93,32 +93,38 @@ ipstate_update(packet_info_t *packet)
 
 	rec = ipstate_insert(ip);
 
-	if (rec->flows[packet->ip_type].first == 0)
-		rec->flows[packet->ip_type].first = packet->ts.tv_sec;
-
-	rec->flows[packet->ip_type].last = packet->ts.tv_sec;
-	rec->flows[packet->ip_type].bytes += packet->len;
-	rec->flows[packet->ip_type].packets += packet->packets;
+	rec->flows[packet->ip_type].current = packet->ts.tv_sec;
+	rec->flows[packet->ip_type].bytes_pending += packet->len;
+	rec->flows[packet->ip_type].packets_pending += packet->packets;
 
 	if (packet->new_flow)
 		rec->flows[packet->ip_type].count++;
 
-	if (rec->flows[packet->ip_type].first != rec->flows[packet->ip_type].last)
+	if (rec->flows[packet->ip_type].last == 0)
+		rec->flows[packet->ip_type].last = rec->flows[packet->ip_type].current;
+
+	if (rec->flows[packet->ip_type].last != rec->flows[packet->ip_type].current)
 	{
-		rec->flows[packet->ip_type].flow = rec->flows[packet->ip_type].bytes / (rec->flows[packet->ip_type].last - rec->flows[packet->ip_type].first);
+		rec->flows[packet->ip_type].flow = rec->flows[packet->ip_type].bytes_pending / (rec->flows[packet->ip_type].current - rec->flows[packet->ip_type].last);
 		rec->flows[packet->ip_type].flow *= 8;
-		rec->flows[packet->ip_type].pps = rec->flows[packet->ip_type].packets / (rec->flows[packet->ip_type].last - rec->flows[packet->ip_type].first);
+		rec->flows[packet->ip_type].pps = rec->flows[packet->ip_type].packets_pending / (rec->flows[packet->ip_type].current - rec->flows[packet->ip_type].last);
 
 #ifdef DEBUG
 		char dst[INET6_ADDRSTRLEN];
 
 		inet_ntop(AF_INET, &packet->pkt_dst, dst, INET6_ADDRSTRLEN);
 
-		DPRINTF("      IP %s has received %ld bytes/%ld packets. (+%d B/+%d P) %f kbps %d pps %d active\n", dst,
+		DPRINTF("      IP %s has received %ld bytes/%ld packets. (+%zu B/+%d P) %f kbps %ld pps %d active\n", dst,
 			rec->flows[packet->ip_type].bytes, rec->flows[packet->ip_type].packets, packet->len, packet->packets, rec->flows[packet->ip_type].flow / 1000., rec->flows[packet->ip_type].pps,
 			rec->flows[packet->ip_type].count);
 #endif
 		HOOK_CALL(HOOK_CHECK_TRIGGER, packet, rec);
+
+		rec->flows[packet->ip_type].bytes += rec->flows[packet->ip_type].bytes_pending;
+		rec->flows[packet->ip_type].packets += rec->flows[packet->ip_type].packets_pending;
+		rec->flows[packet->ip_type].last = rec->flows[packet->ip_type].current;
+
+		rec->flows[packet->ip_type].bytes_pending = rec->flows[packet->ip_type].packets_pending = 0;
 	}
 }
 

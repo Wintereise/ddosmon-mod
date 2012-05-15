@@ -27,11 +27,13 @@ typedef struct iprecord_ iprecord_t;
 typedef struct flowdata_ flowdata_t;
 
 struct flowdata_ {
-        time_t first;
         time_t last;
+        time_t current;
         unsigned long bytes;
+        unsigned long bytes_pending;
         unsigned long flow;
         unsigned long packets;
+        unsigned long packets_pending;
         unsigned long pps;
 	unsigned int count;
 };
