@@ -137,7 +137,7 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 		char cidr[INET6_ADDRSTRLEN + 10];
 		char *len;
 
-		strlcpy(cidr, ce->varname, INET6_ADDRSTRLEN + 10);
+		mowgli_strlcpy(cidr, ce->varname, sizeof cidr);
 
 		len = strrchr(cidr, '/');
 		if (len == NULL)
