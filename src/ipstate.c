@@ -25,7 +25,6 @@
 #include "hook.h"
 
 static patricia_tree_t *iprecord_trie = NULL;
-static time_t next_unban_run;
 
 static iprecord_t *
 ipstate_find(uint32_t ip)
@@ -50,22 +49,10 @@ ipstate_clear_record(iprecord_t *rec)
 	free(rec);
 }
 
-void
-ipstate_clear(void)
+static void
+ipstate_expire(void *unused)
 {
 	Clear_Patricia(iprecord_trie, (void_fn_t) ipstate_clear_record);
-}
-
-static void
-ipstate_maybe_clear(void)
-{
-	if (get_time() > next_unban_run)
-	{
-		ipstate_clear();
-		next_unban_run = get_time() + EXPIRY_CHECK;
-
-		DPRINTF("housekeeping complete.  next run at %lu\n", (unsigned long) next_unban_run);
-	}
 }
 
 static iprecord_t *
@@ -107,9 +94,9 @@ ipstate_update(packet_info_t *packet)
 	rec = ipstate_insert(ip);
 
 	if (rec->flows[packet->ip_type].first == 0)
-		rec->flows[packet->ip_type].first = get_time();
+		rec->flows[packet->ip_type].first = packet->ts.tv_sec;
 
-	rec->flows[packet->ip_type].last = get_time();
+	rec->flows[packet->ip_type].last = packet->ts.tv_sec;
 	rec->flows[packet->ip_type].bytes += packet->len;
 	rec->flows[packet->ip_type].packets += packet->packets;
 
@@ -136,11 +123,10 @@ ipstate_update(packet_info_t *packet)
 }
 
 void
-init_ipstate(void)
+ipstate_setup(mowgli_eventloop_t *eventloop)
 {
 	iprecord_trie = New_Patricia(32);
 	DPRINTF("iprecord trie %p\n", iprecord_trie);
 
-	next_unban_run = get_time() + EXPIRY_CHECK;
-	HOOK_REGISTER(HOOK_TIMER_TICK, ipstate_maybe_clear);
+	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, EXPIRY_CHECK);
 }

@@ -43,6 +43,6 @@ struct iprecord_ {
 
 void ipstate_clear(void);
 void ipstate_update(packet_info_t *packet);
-void init_ipstate(void);
+void ipstate_setup(mowgli_eventloop_t *eventloop);
 
 #endif

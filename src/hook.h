@@ -69,7 +69,6 @@ extern hook_t *hook_list[MAX_HOOKS];
 
 /* hook ids */
 #define	HOOK_CHECK_TRIGGER	0
-#define HOOK_TIMER_TICK		1
-#define HOOK_CHECK_EXEMPT	2
+#define HOOK_CHECK_EXEMPT	1
 
 #endif

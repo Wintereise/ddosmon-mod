@@ -25,7 +25,6 @@
 #include "stdinc.h"
 #include "protocols.h"
 #include "packet.h"
-#include "eventsource.h"
 #include "ipstate.h"
 #include "hook.h"
 
@@ -34,7 +33,6 @@
 # include <sys/resource.h>
 #endif
 
-eventsource_t *ev = NULL;
 hook_t *hook_list[MAX_HOOKS];
 
 #ifdef DEBUG
@@ -73,15 +71,6 @@ daemonize(const char *b_wm)
 #endif
 }
 
-/* avoid calling unnecessary time-related syscalls */
-static time_t cachetime;
-
-time_t
-get_time(void)
-{
-	return cachetime;
-}
-
 int
 main(int argc, const char *argv[])
 {
@@ -91,9 +80,6 @@ main(int argc, const char *argv[])
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
 #endif
-
-	/* set up cachetime */
-	cachetime = time(NULL);
 
 #ifdef HAVE_GETRLIMIT
 	if (!getrlimit(RLIMIT_CORE, &rlim))
@@ -109,28 +95,10 @@ main(int argc, const char *argv[])
 
 	eventloop = mowgli_eventloop_create();
 
-	init_ipstate();
-
+	ipstate_setup(eventloop);
 	conf_process(eventloop);
-	if (ev == NULL)
-		return EXIT_FAILURE;
 
-#if 0
-	fd = ev->prepare();
-
-	for (;;)
-	{
-		const unsigned char *pkt;
-		packet_info_t info;
-
-		pkt = ev->read(fd, &info);
-
-		cachetime = time(NULL);
-		HOOK_CALL(HOOK_TIMER_TICK, cachetime);
-	}
-
-	ev->shutdown(fd);
-#endif
+	/* everything is set up, lets run the app */
 	mowgli_eventloop_run(eventloop);
 
 	return EXIT_SUCCESS;

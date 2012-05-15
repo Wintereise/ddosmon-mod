@@ -127,9 +127,10 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 }
 
 static void
-expire_triggers(void)
+expire_triggers(void *unused)
 {
 	banrecord_t *rec, *trec;
+	(void) unused;
 
 	for (rec = banrecord_list, trec = rec ? rec->next : NULL; rec != NULL; rec = trec, trec = trec ? trec->next : NULL)
 	{
@@ -296,5 +297,6 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 	banrecord_trie = New_Patricia(32);
 
 	HOOK_REGISTER(HOOK_CHECK_TRIGGER, check_trigger);
-	HOOK_REGISTER(HOOK_TIMER_TICK, expire_triggers);
+
+	mowgli_timer_add(eventloop, "expire_triggers", expire_triggers, NULL, EXPIRY_CHECK);
 }

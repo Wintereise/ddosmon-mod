@@ -51,6 +51,4 @@
 #define CONFIGFILE PREFIX "/etc/ddosmon.conf"
 #endif
 
-extern time_t get_time(void);
-
 extern void module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *ce);
