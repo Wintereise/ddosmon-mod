@@ -217,16 +217,16 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 }
 
 static void
-parse_actions(trigger_t *t, config_entry_t *entry)
+parse_actions(trigger_t *t, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 	triggeraction_t *ta;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
 		action_t *act;
 
-		act = action_find(ce->ce_varname);
+		act = action_find(ce->varname);
 		if (act == NULL)
 			continue;
 
@@ -238,45 +238,45 @@ parse_actions(trigger_t *t, config_entry_t *entry)
 }
 
 static void
-parse_trigger(config_entry_t *entry)
+parse_trigger(mowgli_config_file_entry_t *entry)
 {
 	trigger_t *t;
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
 	t = calloc(sizeof(trigger_t), 1);
 	t->minimum_flows = default_minimum_flows;
 	t->minimum_mbps = default_minimum_mbps;
 	t->minimum_pps = default_minimum_pps;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "protocol"))
+		if (!strcasecmp(ce->varname, "protocol"))
 		{
-			if (!strcasecmp(ce->ce_vardata, "tcp"))
+			if (!strcasecmp(ce->vardata, "tcp"))
 				t->protocol = 6;
-			else if (!strcasecmp(ce->ce_vardata, "tcp-syn"))
+			else if (!strcasecmp(ce->vardata, "tcp-syn"))
 			{
 				t->protocol = 6;
 			}
-			else if (!strcasecmp(ce->ce_vardata, "udp"))
+			else if (!strcasecmp(ce->vardata, "udp"))
 				t->protocol = 17;
-			else if (!strcasecmp(ce->ce_vardata, "icmp"))
+			else if (!strcasecmp(ce->vardata, "icmp"))
 				t->protocol = 1;
 		}
-		else if (!strcasecmp(ce->ce_varname, "mbps_ratio"))
-			t->flow_mbps_ratio = (float) atof(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "pps_ratio"))
-			t->flow_pps_ratio = (float) atof(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_flows"))
-			t->minimum_flows = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_mbps"))
-			t->minimum_mbps = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_pps"))
-			t->minimum_pps = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "expiry"))
-			t->expiry = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "actions"))
-			parse_actions(t, ce->ce_entries);
+		else if (!strcasecmp(ce->varname, "mbps_ratio"))
+			t->flow_mbps_ratio = (float) atof(ce->vardata);
+		else if (!strcasecmp(ce->varname, "pps_ratio"))
+			t->flow_pps_ratio = (float) atof(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_flows"))
+			t->minimum_flows = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_mbps"))
+			t->minimum_mbps = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_pps"))
+			t->minimum_pps = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "expiry"))
+			t->expiry = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "actions"))
+			parse_actions(t, ce->entries);
 	}
 
 	DPRINTF("t->protocol %d\n", t->protocol);
@@ -286,24 +286,24 @@ parse_trigger(config_entry_t *entry)
 }
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
 	memset(t_list, 0, sizeof(t_list));
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "trigger"))
-			parse_trigger(ce->ce_entries);
-		else if (!strcasecmp(ce->ce_varname, "expiry"))
-			expiry = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_flows"))
-			default_minimum_flows = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_mbps"))
-			default_minimum_mbps = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "minimum_pps"))
-			default_minimum_pps = atoi(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "trigger"))
+			parse_trigger(ce->entries);
+		else if (!strcasecmp(ce->varname, "expiry"))
+			expiry = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_flows"))
+			default_minimum_flows = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_mbps"))
+			default_minimum_mbps = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "minimum_pps"))
+			default_minimum_pps = atoi(ce->vardata);
 	}
 
 	banrecord_trie = New_Patricia(32);

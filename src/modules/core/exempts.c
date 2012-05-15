@@ -128,17 +128,17 @@ hook_check_exempt(packet_info_t *packet, iprecord_t *irec, int *do_trigger)
 }
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
 		exempt_t *e;
 		char cidr[INET6_ADDRSTRLEN + 10];
 		char *len;
 
-		strlcpy(cidr, ce->ce_varname, INET6_ADDRSTRLEN + 10);
+		strlcpy(cidr, ce->varname, INET6_ADDRSTRLEN + 10);
 
 		len = strrchr(cidr, '/');
 		if (len == NULL)
@@ -152,15 +152,15 @@ module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
 		e->cidrlen = atoi(len);
 
 		e->etype = EXEMPT_TYPE_ANY;
-		if (!strcasecmp(ce->ce_vardata, "any"))
+		if (!strcasecmp(ce->vardata, "any"))
 			e->etype = EXEMPT_TYPE_ANY;
-		else if (!strcasecmp(ce->ce_vardata, "src"))
+		else if (!strcasecmp(ce->vardata, "src"))
 			e->etype = EXEMPT_TYPE_SRC;
-		else if (!strcasecmp(ce->ce_vardata, "dst"))
+		else if (!strcasecmp(ce->vardata, "dst"))
 			e->etype = EXEMPT_TYPE_DST;
 		e->val = exempt_validator_tab[e->etype];
 
-		DPRINTF("cidr: %s/%d type %d (%s)\n", cidr, e->cidrlen, e->etype, ce->ce_vardata);
+		DPRINTF("cidr: %s/%d type %d (%s)\n", cidr, e->cidrlen, e->etype, ce->vardata);
 
 		e_list = e;
 	}

@@ -381,9 +381,9 @@ parse_type(const char *typename)
 }
 
 static void
-parse_target(const char *host, config_entry_t *entry)
+parse_target(const char *host, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 	target_t *target;
 
 	target = calloc(sizeof(target_t), 1);
@@ -400,58 +400,58 @@ parse_target(const char *host, config_entry_t *entry)
 	target->rtr_type = router_type;
 	target->nullroute_tag = nullroute_tag;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "user"))
-			target->user = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "pass"))
-			target->pass = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "pubkey"))
-			target->pubkey = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "privkey"))
-			target->privkey = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "enable_password"))
-			target->enable_pass = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "port"))
-			target->port = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "nullroute_tag"))
-			target->nullroute_tag = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "protocol"))
-			target->proto = parse_proto(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "type"))
-			target->rtr_type = parse_type(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "user"))
+			target->user = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "pass"))
+			target->pass = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "pubkey"))
+			target->pubkey = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "privkey"))
+			target->privkey = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "enable_password"))
+			target->enable_pass = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "port"))
+			target->port = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "nullroute_tag"))
+			target->nullroute_tag = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "protocol"))
+			target->proto = parse_proto(ce->vardata);
+		else if (!strcasecmp(ce->varname, "type"))
+			target->rtr_type = parse_type(ce->vardata);
 	}
 
 	target_list = target;
 }
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "user"))
-			router_ssh_user = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "pass"))
-			router_ssh_pass = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "pubkey"))
-			router_pubkey = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "privkey"))
-			router_privkey = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "enable_password"))
-			router_enable_pass = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "port"))
-			router_port = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "nullroute_tag"))
-			nullroute_tag = atoi(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "protocol"))
-			router_proto = parse_proto(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "type"))
-			router_type = parse_type(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "target"))
-			parse_target(ce->ce_vardata, ce->ce_entries);
+		if (!strcasecmp(ce->varname, "user"))
+			router_ssh_user = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "pass"))
+			router_ssh_pass = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "pubkey"))
+			router_pubkey = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "privkey"))
+			router_privkey = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "enable_password"))
+			router_enable_pass = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "port"))
+			router_port = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "nullroute_tag"))
+			nullroute_tag = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "protocol"))
+			router_proto = parse_proto(ce->vardata);
+		else if (!strcasecmp(ce->varname, "type"))
+			router_type = parse_type(ce->vardata);
+		else if (!strcasecmp(ce->varname, "target"))
+			parse_target(ce->vardata, ce->entries);
 	}
 
 	action_register("nullroute", trigger_nullroute, NULL);

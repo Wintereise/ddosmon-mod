@@ -64,18 +64,18 @@ run_script(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 }
 
 static void
-parse_action(char *name, config_entry_t *entry)
+parse_action(char *name, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 	customscript_t *cs;
 	char *ban_program = NULL, *unban_program = NULL;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "ban_program"))
-			ban_program = ce->ce_vardata;
-		else if (!strcasecmp(ce->ce_varname, "unban_program"))
-			unban_program = ce->ce_vardata;
+		if (!strcasecmp(ce->varname, "ban_program"))
+			ban_program = ce->vardata;
+		else if (!strcasecmp(ce->varname, "unban_program"))
+			unban_program = ce->vardata;
 	}
 
 	if (!ban_program || !unban_program)
@@ -89,13 +89,13 @@ parse_action(char *name, config_entry_t *entry)
 }
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "action"))
-			parse_action(ce->ce_vardata, ce->ce_entries);
+		if (!strcasecmp(ce->varname, "action"))
+			parse_action(ce->vardata, ce->entries);
 	}
 }

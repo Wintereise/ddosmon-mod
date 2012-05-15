@@ -230,19 +230,19 @@ static eventsource_t pcap_eventsource = {
 };
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
 	init_dissectors();
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "interface"))
-			interface = strdup(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "interface"))
+			interface = strdup(ce->vardata);
 
-		if (!strcasecmp(ce->ce_varname, "pcap_string"))
-			pcapfilter = strdup(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "pcap_string"))
+			pcapfilter = strdup(ce->vardata);
 	}
 
 	ev = &pcap_eventsource;

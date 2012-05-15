@@ -712,14 +712,14 @@ static eventsource_t netflow_eventsource = {
 };
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "bind_port"))
-			bind_port = atoi(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "bind_port"))
+			bind_port = atoi(ce->vardata);
 	}
 
 	ev = &netflow_eventsource;

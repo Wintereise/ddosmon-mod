@@ -24,7 +24,7 @@
 #include <dlfcn.h>
 
 void
-module_open(mowgli_eventloop_t *eventloop, const char *name, config_entry_t *ce)
+module_open(mowgli_eventloop_t *eventloop, const char *name, mowgli_config_file_entry_t *ce)
 {
 	void *dlptr;
 	char path[16384];

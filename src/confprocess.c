@@ -33,20 +33,22 @@ void
 conf_process(mowgli_eventloop_t *eventloop)
 {
 	const char *path = CONFIGFILE;
-	config_file_t *cf;
-	config_entry_t *ce;
+	mowgli_config_file_t *cf;
+	mowgli_config_file_entry_t *ce;
 
 	DPRINTF("Parsing config file %s\n", path);
 
-	cf = config_load(path);
+	cf = mowgli_config_file_load(path);
 	if (cf == NULL)
 		return;
 
-	for (ce = cf->cf_entries; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, cf->entries)
 	{
-		if (!strcasecmp(ce->ce_varname, "module"))
-			module_open(eventloop, ce->ce_vardata, ce->ce_entries);
+		if (!strcasecmp(ce->varname, "module"))
+			module_open(eventloop, ce->vardata, ce->entries);
 	}
 
 	DPRINTF("Config parsing %s completed\n", path);
+
+	mowgli_config_file_free(cf);
 }

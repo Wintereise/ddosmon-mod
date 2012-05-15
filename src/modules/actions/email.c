@@ -110,18 +110,18 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 }
 
 void
-module_cons(mowgli_eventloop_t *eventloop, config_entry_t *entry)
+module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
-	config_entry_t *ce;
+	mowgli_config_file_entry_t *ce;
 
-	for (ce = entry; ce != NULL; ce = ce->ce_next)
+	MOWGLI_ITER_FOREACH(ce, entry)
 	{
-		if (!strcasecmp(ce->ce_varname, "from"))
-			alerts_from = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "to"))
-			alerts_to = strdup(ce->ce_vardata);
-		else if (!strcasecmp(ce->ce_varname, "sendmail"))
-			mta = strdup(ce->ce_vardata);
+		if (!strcasecmp(ce->varname, "from"))
+			alerts_from = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "to"))
+			alerts_to = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "sendmail"))
+			mta = strdup(ce->vardata);
 	}
 
 	action_register("email", send_email, NULL);
