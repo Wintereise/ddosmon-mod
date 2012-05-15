@@ -25,7 +25,6 @@
 #include "stdinc.h"
 #include "protocols.h"
 #include "packet.h"
-#include "confparse.h"
 #include "patricia.h"
 #include "ipstate.h"
 #include "hook.h"

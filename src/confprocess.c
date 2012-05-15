@@ -26,7 +26,6 @@
  */
 
 #include "stdinc.h"
-#include "confparse.h"
 #include "modulefactory.h"
 
 void

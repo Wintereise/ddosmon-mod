@@ -25,7 +25,6 @@
 #include "protocols.h"
 #include "packet.h"
 #include "eventsource.h"
-#include "confparse.h"
 #include "ipstate.h"
 
 #ifndef BUFSIZ

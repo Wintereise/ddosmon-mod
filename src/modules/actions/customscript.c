@@ -19,7 +19,6 @@
 
 #include "stdinc.h"
 #include "ipstate.h"
-#include "confparse.h"
 #include "action.h"
 
 typedef struct _customscript {

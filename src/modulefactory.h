@@ -20,8 +20,6 @@
 #ifndef __MODULEFACTORY_H
 #define __MODULEFACTORY_H
 
-#include "confparse.h"
-
 typedef void (*module_cons_f)(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *ce);
 void module_open(mowgli_eventloop_t *eventloop, const char *path, mowgli_config_file_entry_t *ce);
 

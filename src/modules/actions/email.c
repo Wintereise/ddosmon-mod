@@ -19,7 +19,6 @@
 
 #include "stdinc.h"
 #include "ipstate.h"
-#include "confparse.h"
 #include "action.h"
 
 static char *alerts_from, *alerts_to, *mta;

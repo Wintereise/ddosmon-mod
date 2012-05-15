@@ -19,7 +19,6 @@
 
 #include "stdinc.h"
 #include "modulefactory.h"
-#include "confparse.h"
 
 #include <dlfcn.h>
 

@@ -24,7 +24,6 @@
 #include <stdarg.h>
 
 #include "stdinc.h"
-#include "confparse.h"
 #include "action.h"
 
 #include <libssh2.h>

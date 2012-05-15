@@ -1,5 +1,5 @@
 PROG = ddosmon
-SRCS = action.c confparse.c confprocess.c ipstate.c main.c modulefactory.c patricia.c strlcpy.c
+SRCS = action.c confprocess.c ipstate.c main.c modulefactory.c patricia.c strlcpy.c
 SUBDIRS = modules
 
 include ../buildsys.mk

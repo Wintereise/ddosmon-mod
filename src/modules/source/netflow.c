@@ -27,7 +27,6 @@
 #include "protocols.h"
 #include "packet.h"
 #include "eventsource.h"
-#include "confparse.h"
 #include "patricia.h"
 #include "ipstate.h"
 #include "hook.h"

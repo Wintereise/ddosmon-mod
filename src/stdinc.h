@@ -51,8 +51,6 @@
 #define CONFIGFILE PREFIX "/etc/ddosmon.conf"
 #endif
 
-#include "confparse.h"
-
 extern time_t get_time(void);
 
 extern size_t strlcat(char *dest, const char *src, size_t count);
