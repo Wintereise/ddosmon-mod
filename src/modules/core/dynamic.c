@@ -52,28 +52,18 @@ typedef struct _trigger {
 	triggeraction_t *list;
 } trigger_t;
 
-typedef struct _banrecord {
-	struct _banrecord *prev, *next;
-
-        iprecord_t irec;
-	packet_info_t pkt;
-	trigger_t *t;
-
-        time_t added;
-} banrecord_t;
-
 static trigger_t *t_list[IPPROTO_MAX + 1];
 static patricia_tree_t *banrecord_trie = NULL;
 static banrecord_t *banrecord_list = NULL;
 static int expiry;
 
 static void
-run_triggers(actiontype_t at, trigger_t *t, packet_info_t *packet, iprecord_t *rec)
+run_triggers(actiontype_t at, trigger_t *t, packet_info_t *packet, banrecord_t *rec)
 {
 	triggeraction_t *i;
 
 	for (i = t->list; i != NULL; i = i->next)
-		i->act->act(at, packet, rec, i->act->data);
+		i->act->act(at, packet, &rec->irec, i->act->data);
 }
 
 static banrecord_t *
@@ -111,10 +101,11 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	if (rec->next != NULL)
 		rec->next->prev = rec;
 
-	rec->t = t;
+	rec->trigger = t;
 	memcpy(&rec->irec, irec, sizeof(iprecord_t));
 	memcpy(&rec->pkt, packet, sizeof(packet_info_t));
 	rec->added = mowgli_eventloop_get_time(eventloop);
+	rec->expiry_ts = rec->added + (t->expiry ? t->expiry : expiry);
 
 	sin.s_addr = irec->addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
@@ -124,7 +115,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 
 	Deref_Prefix(pfx);
 
-	run_triggers(ACTION_BAN, t, packet, &rec->irec);
+	run_triggers(ACTION_BAN, t, packet, rec);
 
 	return rec;
 }
@@ -141,13 +132,10 @@ expire_dynamic_triggers(void *unused)
 		prefix_t *pfx;
 		patricia_node_t *node;
 
-		if (mowgli_eventloop_get_time(eventloop) < (rec->added + expiry))
+		if (mowgli_eventloop_get_time(eventloop) < rec->expiry_ts)
 			continue;
 
-		if (rec->t->expiry && mowgli_eventloop_get_time(eventloop) < (rec->added + rec->t->expiry))
-			continue;
-
-		run_triggers(ACTION_UNBAN, rec->t, &rec->pkt, &rec->irec);
+		run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
 
 		sin.s_addr = rec->irec.addr;
 		pfx = New_Prefix(AF_INET, &sin, 32);

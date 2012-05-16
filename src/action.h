@@ -36,6 +36,17 @@ typedef struct _action {
 	void *data;
 } action_t;
 
+typedef struct _banrecord {
+	struct _banrecord *prev, *next;
+
+	iprecord_t irec;
+	packet_info_t pkt;
+	void *trigger;
+
+	time_t added;
+	time_t expiry_ts;
+} banrecord_t;
+
 void action_register(const char *action, action_f act, void *data);
 action_t *action_find(const char *action);
 
