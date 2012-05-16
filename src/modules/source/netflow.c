@@ -455,8 +455,8 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 			.tcp_flags = rec->tcp_flags,
 			.new_flow = !crec->injected,
 			.ts = (struct timeval){
-				.tv_sec = mowgli_eventloop_get_time(eventloop),
-				.tv_usec = 0,
+				.tv_sec = hdr->unix_ts,
+				.tv_usec = hdr->unix_tns / 1000,
 			},
 		};
 
@@ -542,8 +542,8 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			.tcp_flags = rec->tcp_flags,
 			.new_flow = !crec->injected,
 			.ts = (struct timeval){
-				.tv_sec = mowgli_eventloop_get_time(eventloop),
-				.tv_usec = 0,
+				.tv_sec = hdr->unix_ts,
+				.tv_usec = hdr->unix_tns / 1000,
 			},
 		};
 
