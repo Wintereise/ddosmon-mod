@@ -44,6 +44,7 @@ typedef struct {
 
 typedef struct {
 	flowcache_record_t *flows[FLOW_HASH_SIZE];
+	struct in_addr addr;
 } flowcache_src_host_t;
 
 flowcache_record_t *flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port);

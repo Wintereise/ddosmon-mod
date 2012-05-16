@@ -126,6 +126,7 @@ flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
 		return node->data;
 
 	host = calloc(sizeof(*host), 1);
+	host->addr = *addr;
 
 	pfx = New_Prefix(AF_INET, addr, 32);
 	node = patricia_lookup(dst->src_host_tree, pfx);

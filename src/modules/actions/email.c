@@ -21,6 +21,8 @@
 #include "stdinc.h"
 #include "ipstate.h"
 #include "action.h"
+#include "flowcache.h"
+#include "patricia.h"
 
 static char *alert_prefix, *alerts_from, *alerts_to, *mta;
 static bool use_local_timezone;
@@ -55,6 +57,44 @@ get_protocol(int proto)
 	}
 
 	return "???";
+}
+
+static void
+list_flows(FILE *out, packet_info_t *packet)
+{
+	flowcache_dst_host_t *dst;
+	patricia_node_t *node;
+	char srcbuf[INET6_ADDRSTRLEN];
+	char dstbuf[INET6_ADDRSTRLEN];
+	int i = 0;
+
+	dst = flowcache_dst_host_lookup(&packet->pkt_dst);
+	if (dst == NULL || dst->src_host_tree == NULL)
+		return;
+
+	inet_ntop(AF_INET, &packet->pkt_dst, dstbuf, INET6_ADDRSTRLEN);
+
+	fprintf(out, "\nActive flows with destination '%s':\n", dstbuf);
+
+	PATRICIA_WALK(dst->src_host_tree->head, node)
+	{
+		flowcache_src_host_t *src = node->data;
+		int hashv;
+
+		inet_ntop(AF_INET, &src->addr, srcbuf, INET6_ADDRSTRLEN);
+
+		for (hashv = 0; hashv < FLOW_HASH_SIZE; hashv++)
+		{
+			flowcache_record_t *record;
+
+			MOWGLI_ITER_FOREACH(record, src->flows[hashv])
+			{
+				fprintf(out, "%-5d. %s:%u -> %s:%u [%u bytes, %u packets]\n",
+					++i, srcbuf, record->src_port, dstbuf, record->dst_port, record->bytes, record->packets);
+			}
+		}
+	}
+	PATRICIA_WALK_END;
 }
 
 static void
@@ -121,6 +161,8 @@ send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data
 	fprintf(out, "MBPS     : %.2f\n", (rec->irec.flows[packet->ip_type].flow / 1000000.));
 	fprintf(out, "PPS      : %ld\n", rec->irec.flows[packet->ip_type].pps);
 	fprintf(out, "AFLS     : %u\n", rec->irec.flows[packet->ip_type].count);
+
+	list_flows(out, packet);
 
 	fclose(out);
 }
