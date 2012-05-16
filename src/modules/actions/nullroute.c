@@ -234,11 +234,17 @@ telnet_session_setup(target_t *target)
 
 	session->transport.telnet.sock = open_socket(target->host, target->port);
 
-	write(session->transport.telnet.sock, target->user, strlen(target->user));
-	write(session->transport.telnet.sock, "\n", 1);
+	if (write(session->transport.telnet.sock, target->user, strlen(target->user)) < 0)
+		return NULL;
 
-	write(session->transport.telnet.sock, target->pass, strlen(target->pass));
-	write(session->transport.telnet.sock, "\n", 1);
+	if (write(session->transport.telnet.sock, "\n", 1) < 0)
+		return NULL;
+
+	if (write(session->transport.telnet.sock, target->pass, strlen(target->pass)) < 0)
+		return NULL;
+
+	if (write(session->transport.telnet.sock, "\n", 1) < 0)
+		return NULL;
 
 	return session;
 }
