@@ -456,17 +456,8 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 			.new_flow = !crec->injected,
 		};
 
-		/* if flow is pre-cached, or small, then inject it. */
-		if ((crec->bytes != 0 || crec->packets != 0))
-		{
-			crec->injected = true;
-			ipstate_update(&inject);
-		}
-		else if ((rec->bytes <= 1024 && rec->packets <= 20))
-		{
-			crec->injected = true;
-			ipstate_update(&inject);
-		}
+		ipstate_update(&inject);
+		crec->injected = true;
 
 		crec->bytes = rec->bytes;
 		crec->packets = rec->packets;
@@ -548,17 +539,8 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			.new_flow = !crec->injected,
 		};
 
-		/* if flow is pre-cached, or small, then inject it. */
-		if ((crec->bytes != 0 || crec->packets != 0))
-		{
-			crec->injected = true;
-			ipstate_update(&inject);
-		}
-		else if ((rec->bytes <= 1024 && rec->packets <= 20))
-		{
-			crec->injected = true;
-			ipstate_update(&inject);
-		}
+		ipstate_update(&inject);
+		crec->injected = true;
 
 		crec->bytes = rec->bytes + add_ethernet_overhead ? 14 : 0;
 		crec->packets = rec->packets;
