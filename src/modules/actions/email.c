@@ -17,11 +17,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "autoconf.h"
 #include "stdinc.h"
 #include "ipstate.h"
 #include "action.h"
 
-static char *alerts_from, *alerts_to, *mta;
+static char *alert_prefix, *alerts_from, *alerts_to, *mta;
+
+typedef struct {
+	char *alert_prefix;
+	char *alerts_from;
+	char *alerts_to;
+	char *mta;
+} email_target_t;
 
 #ifndef BUFSIZ
 #define BUFSIZ 65535
@@ -59,8 +67,9 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 	char emailbuf[BUFSIZ];
 	time_t t;
 	struct tm tm;
+	email_target_t *target = data;
 
-	snprintf(emailbuf, sizeof emailbuf, "%s %s", mta, alerts_to);
+	snprintf(emailbuf, sizeof emailbuf, "%s %s", target->mta, target->alerts_to);
 
 	inet_ntop(AF_INET, &packet->pkt_src, srcbuf, INET6_ADDRSTRLEN);
 	inet_ntop(AF_INET, &packet->pkt_dst, dstbuf, INET6_ADDRSTRLEN);
@@ -87,12 +96,13 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 	}
 
 	out = fdopen(pipfds[1], "w");
-	fprintf(out, "From: %s\n", alerts_from);
-	fprintf(out, "To: %s\n", alerts_to);
-	fprintf(out, "Subject: Attack on IP %s at %s\n", dstbuf, timebuf);
+	fprintf(out, "From: %s\n", target->alerts_from);
+	fprintf(out, "To: %s\n", target->alerts_to);
+	fprintf(out, "Subject: %sAttack on IP %s at %s\n", target->alert_prefix ? target->alert_prefix : "", dstbuf, timebuf);
+	fprintf(out, "X-Mailer: ddosmon/%s\n", PACKAGE_VERSION);
 	fprintf(out, "Date: %s\n\n", timebuf);
 
-	fprintf(out, "An attack has been detected against IP %s and was nulled for 30 minutes.\n", dstbuf);
+	fprintf(out, "An attack has been detected against IP %s and may have been nullrouted.\n", dstbuf);
 
 	fprintf(out, "\nAttack statistics:\n");
 
@@ -108,10 +118,37 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 	fclose(out);
 }
 
+static void
+parse_action(mowgli_config_file_entry_t *entry)
+{
+	mowgli_config_file_entry_t *ce;
+	email_target_t *email_target = calloc(sizeof(email_target_t), 1);
+
+	email_target->alerts_from = alerts_from;
+	email_target->alerts_to = alerts_to;
+	email_target->alert_prefix = alert_prefix;
+	email_target->mta = mta;
+
+	MOWGLI_ITER_FOREACH(ce, entry->entries)
+	{
+		if (!strcasecmp(ce->varname, "from"))
+			email_target->alerts_from = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "to"))
+			email_target->alerts_to = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "alert-prefix"))
+			email_target->alert_prefix = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "sendmail"))
+			email_target->mta = strdup(ce->vardata);
+	}
+
+	action_register(entry->vardata, send_email, email_target);
+}
+
 void
 module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
 	mowgli_config_file_entry_t *ce;
+	static email_target_t email_target;
 
 	MOWGLI_ITER_FOREACH(ce, entry)
 	{
@@ -119,9 +156,18 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			alerts_from = strdup(ce->vardata);
 		else if (!strcasecmp(ce->varname, "to"))
 			alerts_to = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "alert-prefix"))
+			alert_prefix = strdup(ce->vardata);
 		else if (!strcasecmp(ce->varname, "sendmail"))
 			mta = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "action"))
+			parse_action(ce);
 	}
 
-	action_register("email", send_email, NULL);
+	email_target.alerts_from = alerts_from;
+	email_target.alerts_to = alerts_to;
+	email_target.mta = mta;
+	email_target.alert_prefix = alert_prefix;
+
+	action_register("email", send_email, &email_target);
 }
