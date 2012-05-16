@@ -37,6 +37,8 @@
 
 #define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
 
+static bool add_ethernet_overhead = false;
+
 /*****************************************************************************************
  * Netflow packet layout and descriptions.                                               *
  *****************************************************************************************/
@@ -520,7 +522,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 		crec = flowcache_correlate_v5(rec);
 
-		int fakebps = (rec->bytes - crec->bytes);
+		int fakebps = (rec->bytes - crec->bytes) + add_ethernet_overhead ? 14 : 0;
 		int fakepps = (rec->packets - crec->packets);
 
 		/* nenolod:
@@ -558,7 +560,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			ipstate_update(&inject);
 		}
 
-		crec->bytes = rec->bytes;
+		crec->bytes = rec->bytes + add_ethernet_overhead ? 14 : 0;
 		crec->packets = rec->packets;
 	}
 }
@@ -700,8 +702,16 @@ netflow_prepare(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry
 void
 module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
+	mowgli_config_file_entry_t *ce;
+
 	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, FLOW_EXPIRY_TIME);
 	dst_host_tree = New_Patricia(32);
+
+	MOWGLI_ITER_FOREACH(ce, entry)
+	{
+		if (!strcasecmp(ce->varname, "add-ethernet-overhead"))
+			add_ethernet_overhead = true;
+	}
 
 	source_register("netflow", netflow_prepare);
 }
