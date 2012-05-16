@@ -30,6 +30,10 @@
 #define BUFSIZ 65535
 #endif
 
+/**********************************************************************************
+ * Protocol dissectors.                                                           *
+ **********************************************************************************/
+
 typedef void (*dissector_func_t)(packet_info_t *info, const unsigned char *packet);
 
 static dissector_func_t ip_dissectors[IPPROTO_MAX + 1];
@@ -142,7 +146,9 @@ init_dissectors(void)
 	ip_dissectors[17] = &dissect_udp;
 }
 
-/******************************************************************************************************/
+/**********************************************************************************
+ * libpcap glue                                                                   *
+ **********************************************************************************/
 
 static pcap_t *
 open_interface(const char *interface)
