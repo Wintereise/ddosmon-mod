@@ -29,14 +29,14 @@ typedef enum {
 } actiontype_t;
 
 typedef struct _banrecord {
-	struct _banrecord *prev, *next;
-
 	iprecord_t irec;
 	packet_info_t pkt;
 	void *trigger;
 
 	time_t added;
 	time_t expiry_ts;
+
+	mowgli_eventloop_timer_t *timer;
 } banrecord_t;
 
 typedef void (*action_f)(actiontype_t type, packet_info_t *info, banrecord_t *rec, void *data);

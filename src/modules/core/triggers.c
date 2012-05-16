@@ -51,7 +51,6 @@ typedef struct _trigger {
 
 static trigger_t *t_list[IPPROTO_MAX + 1];
 static patricia_tree_t *banrecord_trie = NULL;
-static banrecord_t *banrecord_list = NULL;
 static int expiry;
 
 static void
@@ -80,6 +79,28 @@ ban_find(uint32_t ip)
 	return node != NULL ? node->data : NULL;
 }
 
+static void
+expire_trigger(void *data)
+{
+	banrecord_t *rec = data;
+	struct in_addr sin;
+	prefix_t *pfx;
+	patricia_node_t *node;
+	trigger_t *t = rec->trigger;
+
+	run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
+
+	sin.s_addr = rec->irec.addr;
+	pfx = New_Prefix(AF_INET, &sin, 32);
+
+	node = patricia_lookup(banrecord_trie, pfx);
+	patricia_remove(banrecord_trie, node);
+
+	Deref_Prefix(pfx);
+
+	free(rec);
+}
+
 static banrecord_t *
 trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 {
@@ -92,11 +113,6 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 		return NULL;
 
 	rec = calloc(sizeof(banrecord_t), 1);
-	rec->next = banrecord_list;
-	banrecord_list = rec;
-
-	if (rec->next != NULL)
-		rec->next->prev = rec;
 
 	rec->trigger = t;
 	memcpy(&rec->irec, irec, sizeof(iprecord_t));
@@ -114,46 +130,9 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 
 	run_triggers(ACTION_BAN, t, packet, rec);
 
+	rec->timer = mowgli_timer_add_once(eventloop, "expire_trigger", expire_trigger, rec, (t->expiry ? t->expiry : expiry));
+
 	return rec;
-}
-
-static void
-expire_triggers(void *unused)
-{
-	banrecord_t *rec, *trec;
-	(void) unused;
-
-	for (rec = banrecord_list, trec = rec ? rec->next : NULL; rec != NULL; rec = trec, trec = trec ? trec->next : NULL)
-	{
-		struct in_addr sin;
-		prefix_t *pfx;
-		patricia_node_t *node;
-		trigger_t *t = rec->trigger;
-
-		if (mowgli_eventloop_get_time(eventloop) < rec->expiry_ts)
-			continue;
-
-		run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
-
-		sin.s_addr = rec->irec.addr;
-		pfx = New_Prefix(AF_INET, &sin, 32);
-
-		node = patricia_lookup(banrecord_trie, pfx);
-		patricia_remove(banrecord_trie, node);
-
-		if (rec->prev != NULL)
-			rec->prev->next = rec->next;
-
-		if (rec->next != NULL)
-			rec->next->prev = rec->prev;
-
-		if (rec == banrecord_list)
-			banrecord_list = rec->next;
-
-		Deref_Prefix(pfx);
-
-		free(rec);
-	}
 }
 
 static void
@@ -286,6 +265,4 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 	banrecord_trie = New_Patricia(32);
 
 	HOOK_REGISTER(HOOK_CHECK_TRIGGER, check_trigger);
-
-	mowgli_timer_add(eventloop, "expire_triggers", expire_triggers, NULL, EXPIRY_CHECK);
 }
