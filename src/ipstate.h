@@ -47,5 +47,6 @@ struct iprecord_ {
 void ipstate_clear(void);
 void ipstate_update(packet_info_t *packet);
 void ipstate_setup(mowgli_eventloop_t *eventloop);
+void ipstate_reset_flowcount(struct in_addr *ip);
 
 #endif

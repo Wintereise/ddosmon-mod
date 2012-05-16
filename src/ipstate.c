@@ -110,6 +110,17 @@ ipstate_insert(uint32_t ip)
 }
 
 void
+ipstate_reset_flowcount(struct in_addr *ip)
+{
+	iprecord_t *rec;
+	int i;
+
+	rec = ipstate_insert(ip->s_addr);
+	for (i = 0; i < IPPROTO_MAX; i++)
+		rec->flows[i].count = 0;
+}
+
+void
 ipstate_update(packet_info_t *packet)
 {
 	iprecord_t *rec;

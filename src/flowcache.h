@@ -41,6 +41,7 @@ typedef struct _flowrecord {
 
 typedef struct {
 	patricia_tree_t *src_host_tree;
+	struct in_addr addr;
 } flowcache_dst_host_t;
 
 typedef struct {

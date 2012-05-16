@@ -104,6 +104,7 @@ flowcache_dst_host_lookup(struct in_addr *addr)
 		return node->data;
 
 	host = calloc(sizeof(*host), 1);
+	host->addr = *addr;
 	host->src_host_tree = New_Patricia(32);
 
 	pfx = New_Prefix(AF_INET, addr, 32);
@@ -166,6 +167,7 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 	DPRINTF("clearing flow cache for target %p\n", dst);
 
 	Destroy_Patricia(dst->src_host_tree, (void_fn_t) flowcache_src_free);
+	ipstate_reset_flowcount(&dst->addr);
         free(dst);
 }
 
