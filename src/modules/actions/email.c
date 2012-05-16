@@ -67,6 +67,7 @@ list_flows(FILE *out, packet_info_t *packet)
 	char srcbuf[INET6_ADDRSTRLEN];
 	char dstbuf[INET6_ADDRSTRLEN];
 	int i = 0;
+	time_t now = mowgli_eventloop_get_time(eventloop);
 
 	dst = flowcache_dst_host_lookup(&packet->pkt_dst);
 	if (dst == NULL || dst->src_host_tree == NULL)
@@ -89,8 +90,13 @@ list_flows(FILE *out, packet_info_t *packet)
 
 			MOWGLI_ITER_FOREACH(record, src->flows[hashv])
 			{
-				fprintf(out, "%-5d. %s:%u -> %s:%u [%u bytes, %u packets]\n",
-					++i, srcbuf, record->src_port, dstbuf, record->dst_port, record->bytes, record->packets);
+				time_t age = now - record->last_seen;
+
+				if (age > 60)
+					continue;
+
+				fprintf(out, "%-5d. %s:%u -> %s:%u\n       [%u bytes, %u packets, last seen %ld seconds ago]\n",
+					++i, srcbuf, record->src_port, dstbuf, record->dst_port, record->bytes, record->packets, age);
 			}
 		}
 	}
