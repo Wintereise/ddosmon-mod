@@ -454,6 +454,10 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 			.packets = fakepps,
 			.tcp_flags = rec->tcp_flags,
 			.new_flow = !crec->injected,
+			.ts = (struct timeval){
+				.tv_sec = mowgli_eventloop_get_time(eventloop),
+				.tv_usec = 0,
+			},
 		};
 
 		ipstate_update(&inject);
@@ -537,6 +541,10 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			.packets = fakepps,
 			.tcp_flags = rec->tcp_flags,
 			.new_flow = !crec->injected,
+			.ts = (struct timeval){
+				.tv_sec = mowgli_eventloop_get_time(eventloop),
+				.tv_usec = 0,
+			},
 		};
 
 		ipstate_update(&inject);
