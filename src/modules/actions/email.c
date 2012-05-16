@@ -79,7 +79,7 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 
 	time(&t);
 	tm = *gmtime(&t);
-	strftime(timebuf, sizeof(timebuf) - 1, "%a, %d %b %Y %H:%M:%S +0000", &tm);
+	strftime(timebuf, sizeof(timebuf) - 1, "%a, %d %b %Y %H:%M:%S %z", &tm);
 
 	if (pipe(pipfds) < 0)
 		return;
