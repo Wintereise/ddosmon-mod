@@ -39,6 +39,7 @@ struct flowdata_ {
 };
 
 struct iprecord_ {
+	time_t last;
         uint32_t addr;
 	flowdata_t flows[IPPROTO_MAX + 1];
 };

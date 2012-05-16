@@ -24,6 +24,8 @@
 #include "patricia.h"
 #include "hook.h"
 
+#define IP_EXPIRY_TIME		(600)
+
 static patricia_tree_t *iprecord_trie = NULL;
 
 static iprecord_t *
@@ -46,13 +48,37 @@ ipstate_find(uint32_t ip)
 static void
 ipstate_clear_record(iprecord_t *rec)
 {
+	prefix_t *pfx;
+	patricia_node_t *node;
+	struct in_addr sin;
+
+	sin.s_addr = rec->addr;
+	pfx = New_Prefix(AF_INET, &sin, 32);
+
+	node = patricia_lookup(iprecord_trie, pfx);
+	patricia_remove(iprecord_trie, node);
+
+	Deref_Prefix(pfx);
+
 	free(rec);
 }
 
 static void
 ipstate_expire(void *unused)
 {
-	Clear_Patricia(iprecord_trie, (void_fn_t) ipstate_clear_record);
+	patricia_node_t *node;
+	time_t ts = mowgli_eventloop_get_time(eventloop);
+
+	PATRICIA_WALK(iprecord_trie->head, node)
+	{
+		iprecord_t *rec = node->data;
+
+		if ((rec->last + IP_EXPIRY_TIME) > ts)
+			continue;
+
+		ipstate_clear_record(rec);
+	}
+	PATRICIA_WALK_END;
 }
 
 static iprecord_t *
@@ -93,6 +119,7 @@ ipstate_update(packet_info_t *packet)
 
 	rec = ipstate_insert(ip);
 
+	rec->last = packet->ts.tv_sec;
 	rec->flows[packet->ip_type].current = packet->ts.tv_sec;
 	rec->flows[packet->ip_type].bytes_pending += packet->len;
 	rec->flows[packet->ip_type].packets_pending += packet->packets;
@@ -134,5 +161,5 @@ ipstate_setup(mowgli_eventloop_t *eventloop)
 	iprecord_trie = New_Patricia(32);
 	DPRINTF("iprecord trie %p\n", iprecord_trie);
 
-	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, EXPIRY_CHECK);
+	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, IP_EXPIRY_TIME);
 }
