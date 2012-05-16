@@ -23,6 +23,7 @@
 #include "action.h"
 
 static char *alert_prefix, *alerts_from, *alerts_to, *mta;
+static bool use_local_timezone;
 
 typedef struct {
 	char *alert_prefix;
@@ -78,7 +79,7 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 		return;
 
 	time(&t);
-	tm = *gmtime(&t);
+	tm = use_local_timezone ? *localtime(&t) : *gmtime(&t);
 	strftime(timebuf, sizeof(timebuf) - 1, "%a, %d %b %Y %H:%M:%S %z", &tm);
 
 	if (pipe(pipfds) < 0)
@@ -162,6 +163,8 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			mta = strdup(ce->vardata);
 		else if (!strcasecmp(ce->varname, "action"))
 			parse_action(ce);
+		else if (!strcasecmp(ce->varname, "use-local-timezone"))
+			use_local_timezone = true;
 	}
 
 	email_target.alerts_from = alerts_from;
