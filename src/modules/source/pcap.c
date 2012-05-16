@@ -25,15 +25,58 @@
 #include "protocols.h"
 #include "packet.h"
 #include "ipstate.h"
+#include "flowcache.h"
 
 #ifndef BUFSIZ
 #define BUFSIZ 65535
 #endif
 
 /**********************************************************************************
+ * Flowcache integration.                                                         *
+ **********************************************************************************/
+static flowcache_record_t *
+pcap_correlate_flow(packet_info_t *info)
+{
+	flowcache_src_host_t *src;
+	flowcache_dst_host_t *dst;
+	flowcache_record_t *record;
+	uint8_t hashv = FLOW_HASH(info->src_prt);
+
+	dst = flowcache_dst_host_lookup(&info->pkt_dst);
+	src = flowcache_src_host_lookup(dst, &info->pkt_src);
+
+	record = flowcache_record_lookup(src, info->src_prt, info->dst_prt);
+	if (record != NULL)
+	{
+		DPRINTF("found cached flow for %p/hashv:%d\n", info, hashv);
+		return record;
+	}
+
+	record = src->flows[hashv] =
+		flowcache_record_insert(src->flows[hashv], info->src_prt, info->dst_prt);
+
+	return record;
+}
+
+static void
+pcap_inject_flow(packet_info_t *info)
+{
+	flowcache_record_t *record;
+
+	record = pcap_correlate_flow(info);
+	record->bytes += info->len;
+	record->packets += info->packets;
+
+	info->new_flow = !record->injected;
+
+	ipstate_update(info);
+
+	record->injected = true;
+}
+
+/**********************************************************************************
  * Protocol dissectors.                                                           *
  **********************************************************************************/
-
 typedef void (*dissector_func_t)(packet_info_t *info, const unsigned char *packet);
 
 static dissector_func_t ip_dissectors[IPPROTO_MAX + 1];
@@ -51,7 +94,7 @@ dissect_tcp(packet_info_t *info, const unsigned char *packet)
 	info->dst_prt = ntohs(tcp->dport);
 	info->tcp_flags = tcp->flags;
 
-	ipstate_update(info);
+	pcap_inject_flow(info);
 }
 
 static void
@@ -66,7 +109,7 @@ dissect_udp(packet_info_t *info, const unsigned char *packet)
 	info->src_prt = ntohs(udp->udp_sport);
 	info->dst_prt = ntohs(udp->udp_dport);
 
-	ipstate_update(info);
+	pcap_inject_flow(info);
 }
 
 static void
@@ -78,7 +121,7 @@ dissect_icmp(packet_info_t *info, const unsigned char *packet)
 
 	DPRINTF("    ICMP checksum %x\n", ntohs(icmp->icmp_sum));
 
-	ipstate_update(info);
+	pcap_inject_flow(info);
 }
 
 static void
@@ -107,6 +150,8 @@ dissect_ip(packet_info_t *info, const unsigned char *packet)
 
 	if (ip_dissectors[info->ip_type] != NULL)
 		ip_dissectors[info->ip_type](info, packet + SIZE_IP(ip));
+	else
+		pcap_inject_flow(info);
 }
 
 void

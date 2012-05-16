@@ -176,7 +176,7 @@ flowcache_clear(void *unused)
 void
 flowcache_setup(mowgli_eventloop_t *eventloop)
 {
-	DPRINTF("initializing flow cache\n");
+	DPRINTF("initializing flow cache (eventloop %p)\n", eventloop);
 
 	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, 3600);
 	dst_host_tree = New_Patricia(32);
