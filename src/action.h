@@ -28,14 +28,6 @@ typedef enum {
 	ACTION_UNBAN
 } actiontype_t;
 
-typedef void (*action_f)(actiontype_t type, packet_info_t *info, iprecord_t *rec, void *data);
-
-typedef struct _action {
-	const char *action;
-	action_f act;
-	void *data;
-} action_t;
-
 typedef struct _banrecord {
 	struct _banrecord *prev, *next;
 
@@ -46,6 +38,14 @@ typedef struct _banrecord {
 	time_t added;
 	time_t expiry_ts;
 } banrecord_t;
+
+typedef void (*action_f)(actiontype_t type, packet_info_t *info, banrecord_t *rec, void *data);
+
+typedef struct _action {
+	const char *action;
+	action_f act;
+	void *data;
+} action_t;
 
 void action_register(const char *action, action_f act, void *data);
 action_t *action_find(const char *action);

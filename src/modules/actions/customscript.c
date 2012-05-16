@@ -27,7 +27,7 @@ typedef struct _customscript {
 } customscript_t;
 
 static void
-run_script(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
+run_script(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data)
 {
 	char dstbuf[INET6_ADDRSTRLEN];
 	char *program = NULL;

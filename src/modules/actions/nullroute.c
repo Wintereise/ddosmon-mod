@@ -331,7 +331,7 @@ static router_conversation_func_f conversation_funcs[RTR_MAX] = {
 };
 
 static void
-trigger_nullroute(actiontype_t act, packet_info_t *packet, iprecord_t *irec, void *data)
+trigger_nullroute(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data)
 {
 	char ipbuf[INET6_ADDRSTRLEN];
 	target_t *it;

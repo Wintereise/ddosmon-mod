@@ -58,7 +58,7 @@ get_protocol(int proto)
 }
 
 static void
-send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
+send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data)
 {
 	FILE *out;
 	int pipfds[2];
@@ -105,6 +105,12 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 
 	fprintf(out, "An attack has been detected against IP %s and may have been nullrouted.\n", dstbuf);
 
+	t = rec->expiry_ts;
+	tm = use_local_timezone ? *localtime(&t) : *gmtime(&t);
+	strftime(timebuf, sizeof(timebuf) - 1, "%a, %d %b %Y %H:%M:%S %z", &tm);
+
+	fprintf(out, "Any nullroute if placed will expire at: %s\n", timebuf);
+
 	fprintf(out, "\nAttack statistics:\n");
 
 	fprintf(out, "Source IP: %s/%d\n", srcbuf, packet->src_prt);
@@ -112,9 +118,9 @@ send_email(actiontype_t act, packet_info_t *packet, iprecord_t *rec, void *data)
 	fprintf(out, "Protocol : %s\n", get_protocol(packet->ip_type));
 
 	fprintf(out, "\nQuantized attack statistics:\n");
-	fprintf(out, "MBPS     : %.2f\n", (rec->flows[packet->ip_type].flow / 1000000.));
-	fprintf(out, "PPS      : %ld\n", rec->flows[packet->ip_type].pps);
-	fprintf(out, "AFLS     : %u\n", rec->flows[packet->ip_type].count);
+	fprintf(out, "MBPS     : %.2f\n", (rec->irec.flows[packet->ip_type].flow / 1000000.));
+	fprintf(out, "PPS      : %ld\n", rec->irec.flows[packet->ip_type].pps);
+	fprintf(out, "AFLS     : %u\n", rec->irec.flows[packet->ip_type].count);
 
 	fclose(out);
 }

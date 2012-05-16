@@ -60,7 +60,7 @@ run_triggers(actiontype_t at, trigger_t *t, packet_info_t *packet, banrecord_t *
 	triggeraction_t *i;
 
 	for (i = t->list; i != NULL; i = i->next)
-		i->act->act(at, packet, &rec->irec, i->act->data);
+		i->act->act(at, packet, rec, i->act->data);
 }
 
 static banrecord_t *
