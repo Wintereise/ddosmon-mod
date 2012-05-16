@@ -29,13 +29,12 @@
 #include "patricia.h"
 #include "ipstate.h"
 #include "sourcefactory.h"
+#include "flowcache.h"
 #include "hook.h"
 
 #ifndef BUFSIZ
 #define BUFSIZ 65535
 #endif
-
-#define FLOW_EXPIRY_TIME		(EXPIRY_CHECK)
 
 static bool add_ethernet_overhead = false;
 
@@ -150,182 +149,6 @@ static const char *protonames[NETFLOW_MAX_PROTO + 1] = {
 	[NETFLOW_PROTO_TCP] = "TCP",
 	[NETFLOW_PROTO_UDP] = "UDP",
 };
-
-/*****************************************************************************************
- * Flow cache and delta application.                                                     *
- *****************************************************************************************/
-
-#define FLOW_HASH_SIZE		65536 >> 12
-#define FLOW_HASH(src_port)	(src_port % FLOW_HASH_SIZE)
-
-typedef struct _flowrecord {
-	struct _flowrecord *prev, *next;
-
-	time_t first_seen;
-	bool injected;
-
-	uint16_t src_port;
-	uint16_t dst_port;
-
-	uint32_t bytes;
-	uint32_t packets;
-} flowcache_record_t;
-
-typedef struct {
-	patricia_tree_t *src_host_tree;
-} flowcache_dst_host_t;
-
-typedef struct {
-	flowcache_record_t *flows[FLOW_HASH_SIZE];
-} flowcache_src_host_t;
-
-static patricia_tree_t *dst_host_tree = NULL;
-
-static flowcache_record_t *
-flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port)
-{
-	flowcache_record_t *child;
-
-	child = calloc(sizeof(*child), 1);
-	child->next = parent;
-
-	/* reparent the parent node if one is present. */
-	if (child->next != NULL)
-		child->next->prev = child;
-
-	child->first_seen = mowgli_eventloop_get_time(eventloop);
-
-	child->src_port = src_port;
-	child->dst_port = dst_port;
-
-	return child;
-}
-
-static flowcache_record_t *
-flowcache_record_delete(flowcache_record_t *head)
-{
-	flowcache_record_t *next;
-
-	DPRINTF("destroying flow %p (%d -> %d)\n", head, head->src_port, head->dst_port);
-
-	next = head->next;
-	if (next)
-	{
-		next->prev = head->prev;
-
-		if (next->prev)
-			next->prev->next = next;
-	}
-
-	free(head);
-
-	return next;
-}
-
-static flowcache_record_t *
-flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port)
-{
-	flowcache_record_t *head, *node;
-
-#ifdef VERBOSE_DEBUG
-	DPRINTF("looking for flow %d -> %d for source %p hashv %d\n", src_port, dst_port, src, FLOW_HASH(src_port));
-#endif
-
-	for (head = src->flows[FLOW_HASH(src_port)], node = head; node != NULL; node = node->next)
-	{
-		if (node->src_port == src_port && node->dst_port == dst_port)
-			return node;
-	}
-
-	return NULL;
-}
-
-static flowcache_dst_host_t *
-flowcache_dst_host_lookup(struct in_addr *addr)
-{
-	prefix_t *pfx;
-	patricia_node_t *node;
-	flowcache_dst_host_t *host;
-
-        pfx = New_Prefix(AF_INET, addr, 32);
-	node = patricia_search_exact(dst_host_tree, pfx);
-	Deref_Prefix(pfx);
-
-	if (node != NULL)
-		return node->data;
-
-	host = calloc(sizeof(*host), 1);
-	host->src_host_tree = New_Patricia(32);
-
-	pfx = New_Prefix(AF_INET, addr, 32);
-	node = patricia_lookup(dst_host_tree, pfx);
-	node->data = host;
-	Deref_Prefix(pfx);
-
-	return host;
-}
-
-static flowcache_src_host_t *
-flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
-{
-	prefix_t *pfx;
-	patricia_node_t *node;
-	flowcache_src_host_t *host;
-
-        pfx = New_Prefix(AF_INET, addr, 32);
-	node = patricia_search_exact(dst->src_host_tree, pfx);
-	Deref_Prefix(pfx);
-
-	if (node != NULL)
-		return node->data;
-
-	host = calloc(sizeof(*host), 1);
-
-	pfx = New_Prefix(AF_INET, addr, 32);
-	node = patricia_lookup(dst->src_host_tree, pfx);
-	node->data = host;
-	Deref_Prefix(pfx);
-
-	return host;
-}
-
-static void
-flowcache_src_free(flowcache_src_host_t *src)
-{
-	flowcache_record_t *record;
-	int hashv;
-
-	DPRINTF("clearing flow cache for source %p\n", src);
-
-	for (hashv = 0; hashv < FLOW_HASH_SIZE; hashv++)
-	{
-		record = src->flows[hashv];
-
-		while (record != NULL)
-		{
-			record = flowcache_record_delete(record);
-		}
-	}
-
-	free(src);
-}
-
-static void
-flowcache_dst_free(flowcache_dst_host_t *dst)
-{
-	DPRINTF("clearing flow cache for target %p\n", dst);
-
-	Destroy_Patricia(dst->src_host_tree, (void_fn_t) flowcache_src_free);
-        free(dst);
-}
-
-static void
-flowcache_clear(void *unused)
-{
-	(void) unused;
-
-	Clear_Patricia(dst_host_tree, (void_fn_t) flowcache_dst_free);
-}
 
 /*****************************************************************************************
  * Netflow v5 integration functions for flowcache.                                       *
@@ -693,9 +516,6 @@ void
 module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
 	mowgli_config_file_entry_t *ce;
-
-	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, FLOW_EXPIRY_TIME);
-	dst_host_tree = New_Patricia(32);
 
 	MOWGLI_ITER_FOREACH(ce, entry)
 	{

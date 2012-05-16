@@ -27,6 +27,7 @@
 #include "packet.h"
 #include "ipstate.h"
 #include "hook.h"
+#include "flowcache.h"
 
 #ifdef HAVE_GETRLIMIT
 # include <sys/time.h>
@@ -96,6 +97,7 @@ main(int argc, const char *argv[])
 	eventloop = mowgli_eventloop_create();
 
 	ipstate_setup(eventloop);
+	flowcache_setup(eventloop);
 	conf_process(eventloop);
 
 	/* everything is set up, lets run the app */
