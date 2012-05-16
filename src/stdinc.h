@@ -34,7 +34,6 @@ extern mowgli_eventloop_t *eventloop;
 /*
  * enable global DEBUG mode.
  */
-#define DEBUG
 //#undef DEBUG
 
 /*
