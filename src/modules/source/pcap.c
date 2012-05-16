@@ -233,15 +233,14 @@ static void
 pcap_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eventloop_io_dir_t dir, void *userdata)
 {
 	pcap_t *handle = userdata;
-	packet_info_t info;
 	struct pcap_pkthdr hdr;
 	const unsigned char *pkt;
 
 	DPRINTF("reading pcap/%p\n", handle);
 
-	pkt = pcap_next(handle, &hdr);
-	if (pkt != NULL)
+	while ((pkt = pcap_next(handle, &hdr)) != NULL)
 	{
+		packet_info_t info;
 		info.packets = 1;
 		info.len = hdr.len;
 		info.ts = hdr.ts;

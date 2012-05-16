@@ -17,7 +17,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define DEBUG
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -474,17 +473,19 @@ netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_
 	DPRINTF("reading udp/%d\n", fd);
 #endif
 
-	len = recv(fd, pkt, BUFSIZ, 0);
-	info.len = len;
-	info.ts.tv_sec = mowgli_eventloop_get_time(eventloop);
+	while ((len = recv(fd, pkt, BUFSIZ, 0)) > sizeof(*cmn))
+	{
+		info.len = len;
+		info.ts.tv_sec = mowgli_eventloop_get_time(eventloop);
 
-	/* parse the header ... */
-	cmn = (netflow_common_t *) pkt;
-	cmn->version = ntohs(cmn->version);
+		/* parse the header ... */
+		cmn = (netflow_common_t *) pkt;
+		cmn->version = ntohs(cmn->version);
 
-	DPRINTF("Netflow version %d (len %d).\n", cmn->version, len);
-	if (pfunc[cmn->version] != NULL)
-		pfunc[cmn->version](pkt, &info);
+		DPRINTF("Netflow version %d (len %d).\n", cmn->version, len);
+		if (pfunc[cmn->version] != NULL)
+			pfunc[cmn->version](pkt, &info);
+	}
 }
 
 static void
