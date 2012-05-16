@@ -29,6 +29,7 @@ typedef struct _flowrecord {
 	struct _flowrecord *prev, *next;
 
 	time_t first_seen;
+	time_t last_seen;
 	bool injected;
 
 	uint16_t src_port;

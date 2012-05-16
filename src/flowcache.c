@@ -39,7 +39,7 @@ flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t 
 	if (child->next != NULL)
 		child->next->prev = child;
 
-	child->first_seen = mowgli_eventloop_get_time(eventloop);
+	child->first_seen = child->last_seen = mowgli_eventloop_get_time(eventloop);
 
 	child->src_port = src_port;
 	child->dst_port = dst_port;
@@ -80,7 +80,10 @@ flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t d
 	for (head = src->flows[FLOW_HASH(src_port)], node = head; node != NULL; node = node->next)
 	{
 		if (node->src_port == src_port && node->dst_port == dst_port)
+		{
+			node->last_seen = mowgli_eventloop_get_time(eventloop);
 			return node;
+		}
 	}
 
 	return NULL;
