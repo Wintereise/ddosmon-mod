@@ -252,7 +252,7 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 
 		crec = flowcache_correlate_v1(rec);
 
-		int fakebps = (rec->bytes - crec->bytes);
+		int fakebps = (rec->bytes - crec->bytes) + (add_ethernet_overhead ? 14 : 0);
 		int fakepps = (rec->packets - crec->packets);
 
 		/* nenolod:
@@ -339,7 +339,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 		crec = flowcache_correlate_v5(rec);
 
-		int fakebps = (rec->bytes - crec->bytes) + add_ethernet_overhead ? 14 : 0;
+		int fakebps = (rec->bytes - crec->bytes) + (add_ethernet_overhead ? 14 : 0);
 		int fakepps = (rec->packets - crec->packets);
 
 		/* nenolod:
