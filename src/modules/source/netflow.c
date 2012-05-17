@@ -372,7 +372,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 		ipstate_update(&inject);
 		crec->injected = true;
 
-		crec->bytes = rec->bytes + add_ethernet_overhead ? 14 : 0;
+		crec->bytes = rec->bytes;
 		crec->packets = rec->packets;
 	}
 }
