@@ -31,8 +31,11 @@
 #include <arpa/inet.h> /* BSD, Linux, Solaris: for inet_addr */
 
 #include "patricia.h"
+#include "magazine.h"
 
-#define Delete free
+static magazine_t prefix_magazine = MAGAZINE_INIT(sizeof(prefix_t));
+static magazine_t node_magazine = MAGAZINE_INIT(sizeof(patricia_node_t));
+static magazine_t tree_magazine = MAGAZINE_INIT(sizeof(patricia_tree_t));
 
 /* { from prefix.c */
 
@@ -229,7 +232,7 @@ New_Prefix2 (int family, void *dest, int bitlen, prefix_t *prefix)
     if (family == AF_INET6) {
         default_bitlen = sizeof(struct in6_addr) * 8;
 	if (prefix == NULL) {
-            prefix = calloc(1, sizeof (prefix_t));
+            prefix = magazine_alloc(&prefix_magazine);
 	    dynamic_allocated++;
 	}
 	memcpy (&prefix->add.sin6, dest, sizeof(struct in6_addr));
@@ -238,14 +241,7 @@ New_Prefix2 (int family, void *dest, int bitlen, prefix_t *prefix)
 #endif /* HAVE_IPV6 */
     if (family == AF_INET) {
 	if (prefix == NULL) {
-#ifndef NT
-            prefix = calloc(1, sizeof (prefix4_t));
-#else
-	    //for some reason, compiler is getting
-	    //prefix4_t size incorrect on NT
-	    prefix = calloc(1, sizeof (prefix_t)); 
-#endif /* NT */
-		
+            prefix = magazine_alloc(&prefix_magazine);
 	    dynamic_allocated++;
 	}
 	memcpy (&prefix->add.sin, dest, sizeof(struct in_addr));
@@ -367,7 +363,7 @@ Deref_Prefix (prefix_t * prefix)
     prefix->ref_count--;
     assert (prefix->ref_count >= 0);
     if (prefix->ref_count <= 0) {
-	Delete (prefix);
+	magazine_release(&prefix_magazine, prefix);
 	return;
     }
 }
@@ -383,13 +379,14 @@ static int num_active_patricia = 0;
 patricia_tree_t *
 New_Patricia (int maxbits)
 {
-    patricia_tree_t *patricia = calloc(1, sizeof *patricia);
+    patricia_tree_t *patricia = magazine_alloc(&tree_magazine);
 
     patricia->maxbits = maxbits;
     patricia->head = NULL;
     patricia->num_active_node = 0;
     assert (maxbits <= PATRICIA_MAXBITS); /* XXX */
     num_active_patricia++;
+
     return (patricia);
 }
 
@@ -421,7 +418,7 @@ Clear_Patricia (patricia_tree_t *patricia, void_fn_t func)
     	    else {
 		assert (Xrn->data == NULL);
     	    }
-    	    Delete (Xrn);
+    	    magazine_release (&node_magazine, Xrn);
 	    patricia->num_active_node--;
 
             if (l) {
@@ -439,7 +436,6 @@ Clear_Patricia (patricia_tree_t *patricia, void_fn_t func)
         }
     }
     assert (patricia->num_active_node == 0);
-    /* Delete (patricia); */
 
     patricia->head = NULL;
 }
@@ -449,7 +445,7 @@ void
 Destroy_Patricia (patricia_tree_t *patricia, void_fn_t func)
 {
     Clear_Patricia (patricia, func);
-    Delete (patricia);
+    magazine_release (&tree_magazine, patricia);
     num_active_patricia--;
 }
 
@@ -676,7 +672,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
     assert (prefix->bitlen <= patricia->maxbits);
 
     if (patricia->head == NULL) {
-	node = calloc(1, sizeof *node);
+	node = magazine_alloc(&node_magazine);
 	node->bit = prefix->bitlen;
 	node->prefix = Ref_Prefix (prefix);
 	node->parent = NULL;
@@ -787,7 +783,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 	return (node);
     }
 
-    new_node = calloc(1, sizeof *new_node);
+    new_node = magazine_alloc(&node_magazine);
     new_node->bit = prefix->bitlen;
     new_node->prefix = Ref_Prefix (prefix);
     new_node->parent = NULL;
@@ -839,7 +835,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 #endif /* PATRICIA_DEBUG */
     }
     else {
-        glue = calloc(1, sizeof *glue);
+        glue = magazine_alloc(&node_magazine);
         glue->bit = differ_bit;
         glue->prefix = NULL;
         glue->parent = node->parent;
@@ -907,7 +903,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 #endif /* PATRICIA_DEBUG */
 	parent = node->parent;
 	Deref_Prefix (node->prefix);
-	Delete (node);
+	magazine_release(&node_magazine, node);
         patricia->num_active_node--;
 
 	if (parent == NULL) {
@@ -943,7 +939,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 	    parent->parent->l = child;
 	}
 	child->parent = parent->parent;
-	Delete (parent);
+	magazine_release(&node_magazine, parent);
         patricia->num_active_node--;
 	return;
     }
@@ -963,7 +959,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
     child->parent = parent;
 
     Deref_Prefix (node->prefix);
-    Delete (node);
+    magazine_release(&node_magazine, node);
     patricia->num_active_node--;
 
     if (parent == NULL) {

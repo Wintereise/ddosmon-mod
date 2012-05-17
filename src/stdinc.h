@@ -53,3 +53,5 @@ extern mowgli_eventloop_t *eventloop;
 #endif
 
 extern void module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *ce);
+
+#include "magazine.h"

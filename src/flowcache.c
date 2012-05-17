@@ -27,12 +27,16 @@
 
 static patricia_tree_t *dst_host_tree = NULL;
 
+static magazine_t flowcache_record_magazine = MAGAZINE_INIT(sizeof(flowcache_record_t));
+static magazine_t flowcache_src_magazine = MAGAZINE_INIT(sizeof(flowcache_src_host_t));
+static magazine_t flowcache_dst_magazine = MAGAZINE_INIT(sizeof(flowcache_dst_host_t));
+
 flowcache_record_t *
 flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port)
 {
 	flowcache_record_t *child;
 
-	child = calloc(sizeof(*child), 1);
+	child = magazine_alloc(&flowcache_record_magazine);
 	child->next = parent;
 
 	/* reparent the parent node if one is present. */
@@ -63,7 +67,7 @@ flowcache_record_delete(flowcache_record_t *head)
 			next->prev->next = next;
 	}
 
-	free(head);
+	magazine_release(&flowcache_record_magazine, head);
 
 	return next;
 }
@@ -103,7 +107,7 @@ flowcache_dst_host_lookup(struct in_addr *addr)
 	if (node != NULL)
 		return node->data;
 
-	host = calloc(sizeof(*host), 1);
+	host = magazine_alloc(&flowcache_dst_magazine);
 	host->addr = *addr;
 	host->src_host_tree = New_Patricia(32);
 
@@ -129,7 +133,7 @@ flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
 	if (node != NULL)
 		return node->data;
 
-	host = calloc(sizeof(*host), 1);
+	host = magazine_alloc(&flowcache_src_magazine);
 	host->addr = *addr;
 
 	pfx = New_Prefix(AF_INET, addr, 32);
@@ -158,7 +162,7 @@ flowcache_src_free(flowcache_src_host_t *src)
 		}
 	}
 
-	free(src);
+	magazine_release(&flowcache_src_magazine, src);
 }
 
 static void
@@ -168,7 +172,8 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 
 	Destroy_Patricia(dst->src_host_tree, (void_fn_t) flowcache_src_free);
 	ipstate_reset_flowcount(&dst->addr);
-        free(dst);
+
+	magazine_release(&flowcache_dst_magazine, dst);
 }
 
 static void

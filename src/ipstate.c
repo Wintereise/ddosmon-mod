@@ -27,23 +27,7 @@
 #define IP_EXPIRY_TIME		(600)
 
 static patricia_tree_t *iprecord_trie = NULL;
-
-static iprecord_t *
-ipstate_find(uint32_t ip)
-{
-	prefix_t *pfx;
-	patricia_node_t *node;
-	struct in_addr sin;
-
-	sin.s_addr = ip;
-	pfx = New_Prefix(AF_INET, &sin, 32);
-
-	node = patricia_search_exact(iprecord_trie, pfx);
-
-	Deref_Prefix(pfx);
-
-	return node != NULL ? node->data : NULL;
-}
+static magazine_t iprecord_magazine = MAGAZINE_INIT(sizeof(iprecord_t));
 
 static void
 ipstate_clear_record(iprecord_t *rec)
@@ -60,7 +44,7 @@ ipstate_clear_record(iprecord_t *rec)
 
 	Deref_Prefix(pfx);
 
-	free(rec);
+	magazine_release(&iprecord_magazine, rec);
 }
 
 static void
@@ -89,15 +73,17 @@ ipstate_insert(uint32_t ip)
 	patricia_node_t *node;
 	struct in_addr sin;
 
-	if ((rec = ipstate_find(ip)) != NULL) {
-		DPRINTF("record exists %p\n", rec);
-		return rec;
-	}
-
 	sin.s_addr = ip;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
-	rec = calloc(sizeof(iprecord_t), 1);
+	node = patricia_search_exact(iprecord_trie, pfx);
+	if (node != NULL)
+	{
+		Deref_Prefix(pfx);
+		return node->data;
+	}
+
+	rec = magazine_alloc(&iprecord_magazine);
 	rec->addr = ip;
 
 	node = patricia_lookup(iprecord_trie, pfx);

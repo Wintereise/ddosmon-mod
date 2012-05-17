@@ -38,6 +38,10 @@ hook_t *hook_list[MAX_HOOKS];
 mowgli_eventloop_t *eventloop;
 
 #ifdef DEBUG
+#define NEVER_FORK
+#endif
+
+#ifdef NEVER_FORK
 #undef HAVE_FORK
 #endif
 
