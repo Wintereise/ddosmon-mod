@@ -282,6 +282,14 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 			},
 		};
 
+		/* don't inject precache flows */
+		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
+		{
+			crec->bytes = rec->bytes;
+			crec->packets = rec->packets;
+			continue;
+		}
+
 		ipstate_update(&inject);
 		crec->injected = true;
 
@@ -368,6 +376,13 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 				.tv_usec = hdr->unix_tns / 1000,
 			},
 		};
+
+		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
+		{
+			crec->bytes = rec->bytes;
+			crec->packets = rec->packets;
+			continue;
+		}
 
 		ipstate_update(&inject);
 		crec->injected = true;
