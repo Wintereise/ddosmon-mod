@@ -151,6 +151,15 @@ typedef struct {
 } netflow_v9hdr_t;
 
 typedef struct {
+	uint16_t tmpl_id;
+	uint16_t fieldcount;
+	struct {
+		uint16_t type;
+		uint16_t length;
+	} record[1];	
+} netflow_v9tmplrec_t;
+
+typedef struct {
 	uint16_t flowset_id;
 	uint16_t length;
 } netflow_v9flowset_t;
@@ -183,6 +192,42 @@ static const char *protonames[NETFLOW_MAX_PROTO + 1] = {
 	[NETFLOW_PROTO_TCP] = "TCP",
 	[NETFLOW_PROTO_UDP] = "UDP",
 };
+
+/*****************************************************************************************
+ * Netflow v9 exporter housekeeping.                                                     *
+ *****************************************************************************************/
+
+typedef struct {
+	uint32_t version;
+} exporter_t;
+
+/* this is an ugly hack but it works */
+static patricia_tree_t *nf_source_tree = NULL;
+
+static exporter_t *
+exporter_correlate(uint32_t source_id)
+{
+	exporter_t *e;
+	prefix_t *pfx;
+	patricia_node_t *node;
+
+	pfx = New_Prefix(AF_INET, &source_id, 32);
+	node = patricia_search_exact(nf_source_tree, pfx);
+	Deref_Prefix(pfx);
+
+	if (node != NULL)
+		return node->data;
+
+	e = calloc(sizeof(*e), 1);
+	e->version = 9;
+
+	pfx = New_Prefix(AF_INET, &source_id, 32);
+	node = patricia_lookup(nf_source_tree, pfx);
+	node->data = e;
+	Deref_Prefix(pfx);
+
+	return e;
+}
 
 /*****************************************************************************************
  * Netflow integration functions for flowcache.                                          *
@@ -467,7 +512,6 @@ static void netflow_parse_v7(unsigned char *pkt, packet_info_t *info)
 	DPRINTF("  Uptime                  : %u ms\n", hdr->uptime);
 	DPRINTF("  Epoch                   : %u.%u\n", hdr->unix_ts, hdr->unix_tns);
 	DPRINTF("  Sequence                : %u\n", hdr->sequence);
-	DPRINTF("  Samplerate              : %u\n", hdr->samp_interval);
 
 	for (flow = 0, rec = (netflow_v7rec_t *) (pkt + sizeof(netflow_v7hdr_t));
 	     flow < hdr->flowcount; flow++, rec++)
@@ -550,6 +594,7 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 	unsigned int flow;
 	netflow_v9hdr_t *hdr = (netflow_v9hdr_t *) pkt;
 	netflow_v9flowset_t *fshdr = NULL;
+	exporter_t *exp;
 
 	hdr->flowcount = ntohs(hdr->flowcount);
 	hdr->uptime = ntohl(hdr->uptime);
@@ -563,16 +608,23 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 	DPRINTF("  Sequence                : %u\n", hdr->sequence);
 	DPRINTF("  Source ID               : %u\n", hdr->source_id);
 
+	exp = exporter_correlate(hdr->source_id);
+	DPRINTF("  Exporter object         : %p\n", exp);
+
 	for (flow = 0, fshdr = (netflow_v9flowset_t *) (pkt + sizeof(netflow_v9hdr_t));
 	     ((uint8_t *) fshdr - pkt) < info->len; flow++)
 	{
-		DPRINTF("  Flow %u [%ld]:\n", flow, ((uint8_t *) fshdr - pkt));
+		DPRINTF("  Flowset %u [%ld]:\n", flow, ((uint8_t *) fshdr - pkt));
 
 		fshdr->flowset_id = ntohs(fshdr->flowset_id);
 		fshdr->length = ntohs(fshdr->length);
 
 		DPRINTF("    Flowset ID            : %u\n", fshdr->flowset_id);
 		DPRINTF("    Length                : %u\n", fshdr->length);
+
+		/* skip empty flowsets */
+		if (fshdr->length <= 4)
+			continue;
 
 		/* per RFC3954: "FlowSet ID value of 0 is reserved for the Template FlowSet." */
 		if (!fshdr->flowset_id)
@@ -603,6 +655,10 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 					parsedone = true;
 				}
 			}
+		}
+		else if (fshdr->flowset_id == 1)
+		{
+			DPRINTF("    Flowset type          : %s\n", "OPTION");
 		}
 		else
 		{
@@ -686,6 +742,8 @@ void
 module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
 	mowgli_config_file_entry_t *ce;
+
+	nf_source_tree = New_Patricia(32);
 
 	MOWGLI_ITER_FOREACH(ce, entry)
 	{
