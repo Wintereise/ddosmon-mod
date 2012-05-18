@@ -26,12 +26,14 @@
 
 static char *alert_prefix, *alerts_from, *alerts_to, *mta;
 static bool use_local_timezone;
+static int max_flowcache_lines = -1;
 
 typedef struct {
 	char *alert_prefix;
 	char *alerts_from;
 	char *alerts_to;
 	char *mta;
+	int max_flowcache_lines;
 } email_target_t;
 
 #ifndef BUFSIZ
@@ -60,7 +62,7 @@ get_protocol(int proto)
 }
 
 static void
-list_flows(FILE *out, packet_info_t *packet)
+list_flows(FILE *out, packet_info_t *packet, int max_lines)
 {
 	flowcache_dst_host_t *dst;
 	patricia_node_t *node;
@@ -68,6 +70,7 @@ list_flows(FILE *out, packet_info_t *packet)
 	char dstbuf[INET6_ADDRSTRLEN];
 	int i = 0;
 	time_t now = mowgli_eventloop_get_time(eventloop);
+	int lines = max_lines;
 
 	dst = flowcache_dst_host_lookup(&packet->pkt_dst);
 	if (dst == NULL || dst->src_host_tree == NULL)
@@ -94,6 +97,9 @@ list_flows(FILE *out, packet_info_t *packet)
 
 				if (age > 60)
 					continue;
+
+				if (--max_lines == 0)
+					return;
 
 				fprintf(out, "%-5d. %s:%u -> %s:%u\n       [%u bytes, %u packets, last seen %ld seconds ago]\n",
 					++i, srcbuf, record->src_port, dstbuf, record->dst_port, record->bytes, record->packets, age);
@@ -168,7 +174,7 @@ send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data
 	fprintf(out, "PPS      : %ld\n", rec->irec.flows[packet->ip_type].pps);
 	fprintf(out, "AFLS     : %u\n", rec->irec.flows[packet->ip_type].count);
 
-	list_flows(out, packet);
+	list_flows(out, packet, target->max_flowcache_lines);
 
 	fclose(out);
 }
@@ -183,6 +189,7 @@ parse_action(mowgli_config_file_entry_t *entry)
 	email_target->alerts_to = alerts_to;
 	email_target->alert_prefix = alert_prefix;
 	email_target->mta = mta;
+	email_target->max_flowcache_lines = max_flowcache_lines;
 
 	MOWGLI_ITER_FOREACH(ce, entry->entries)
 	{
@@ -194,6 +201,8 @@ parse_action(mowgli_config_file_entry_t *entry)
 			email_target->alert_prefix = strdup(ce->vardata);
 		else if (!strcasecmp(ce->varname, "sendmail"))
 			email_target->mta = strdup(ce->vardata);
+		else if (!strcasecmp(ce->varname, "max-flowcache-lines"))
+			email_target->max_flowcache_lines = atoi(ce->vardata);
 	}
 
 	action_register(entry->vardata, send_email, email_target);
@@ -219,12 +228,15 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			parse_action(ce);
 		else if (!strcasecmp(ce->varname, "use-local-timezone"))
 			use_local_timezone = true;
+		else if (!strcasecmp(ce->varname, "max-flowcache-lines"))
+			max_flowcache_lines = atoi(ce->vardata);
 	}
 
 	email_target.alerts_from = alerts_from;
 	email_target.alerts_to = alerts_to;
 	email_target.mta = mta;
 	email_target.alert_prefix = alert_prefix;
+	email_target.max_flowcache_lines = max_flowcache_lines;
 
 	action_register("email", send_email, &email_target);
 }
