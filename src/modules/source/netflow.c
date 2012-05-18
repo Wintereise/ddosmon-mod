@@ -194,15 +194,221 @@ static const char *protonames[NETFLOW_MAX_PROTO + 1] = {
 };
 
 /*****************************************************************************************
- * Netflow v9 exporter housekeeping.                                                     *
+ * Netflow v9 exporter housekeeping (most of this part is derivative of nfdump)          *
  *****************************************************************************************/
 
 typedef struct {
+	uint16_t input_offset;
+	uint16_t output_offset;
+	uint16_t length;
+} translation_element_t;
+
+typedef struct input_translation_ {
+	struct input_translation_	*next;
+	uint32_t flags;
+	time_t updated;
+	uint32_t id;
+	uint32_t input_record_size;
+	uint32_t output_record_size;
+	uint32_t input_index;
+	uint32_t zero_index;
+	uint32_t src_as_offset;
+	uint32_t dst_as_offset;
+	uint32_t packet_offset;
+	uint32_t byte_offset;
+	uint32_t ICMP_offset;
+	uint32_t sampler_offset;
+	uint32_t sampler_size;
+	uint32_t router_ip_offset;
+	uint32_t engine_offset;
+	translation_element_t element[];
+} input_translation_t;
+
+typedef struct {
+	uint32_t exporter_id;
 	uint32_t version;
+
+	input_translation_t *input_translation_table; 
+	input_translation_t *current_table;
 } exporter_t;
+
+/* module limited globals */
+static struct element_info_s {
+	// min number of bytes
+	uint16_t	min;
+	// max number of bytes
+	uint16_t	max;
+	// number of optional extension.
+	// required extensions and v9 tags not mapping to any extension are set to 0
+	// this field is used to form the extension map
+	uint16_t	extension;
+} element_info[128] = {
+	{ 0, 0, 0 }, 	//  0 - empty
+	{ 8, 8, 0 }, 	//  1 - NF9_IN_BYTES
+	{ 8, 8, 0 }, 	//  2 - NF9_IN_PACKETS
+	{ 4, 8, 18 }, 	//  3 - NF9_FLOWS
+	{ 1, 1, 0 }, 	//  4 - NF9_IN_PROTOCOL
+	{ 1, 1, 0 },	//  5 - NF9_SRC_TOS
+	{ 1, 1, 0 },	//  6 - NF9_TCP_FLAGS
+	{ 2, 2, 0 },	//  7 - NF9_L4_SRC_PORT
+	{ 4, 4, 0 },	//  8 - NF9_IPV4_SRC_ADDR
+	{ 1, 1, 8 },	//  9 - NF9_SRC_MASK
+	{ 2, 4, 4 },	// 10 - NF9_INPUT_SNMP
+	{ 2, 2, 0 },	// 11 - NF9_L4_DST_PORT
+	{ 4, 4, 0 },	// 12 - NF9_IPV4_DST_ADDR
+	{ 1, 1, 8 },	// 13 - NF9_DST_MASK
+	{ 2, 4, 4 },	// 14 - NF9_OUTPUT_SNMP
+	{ 4, 4, 9 },	// 15 - NF9_IPV4_NEXT_HOP
+	{ 2, 4, 6 },	// 16 - NF9_SRC_AS
+	{ 2, 4, 6 },	// 17 - NF9_DST_AS
+
+	{ 4, 4, 11}, 	// 18 - NF9_BGP_V4_NEXT_HOP
+
+	// 19 - 20 not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, 				
+
+	{ 4, 4, 0 },	// 21 - NF9_LAST_SWITCHED
+	{ 4, 4, 0 },	// 22 - NF9_FIRST_SWITCHED
+	{ 4, 8, 16 },	// 23 - NF9_OUT_BYTES
+	{ 4, 8, 14 },	// 24 - NF9_OUT_PKTS
+
+	{ 0, 0, 0}, { 0, 0, 0}, 					// 25 - 26 not implemented
+
+	{ 16, 16, 0 },	// 27 - NF9_IPV6_SRC_ADDR
+	{ 16, 16, 0 },	// 28 - NF9_IPV6_DST_ADDR
+	{ 1, 1, 8 },	// 29 - NF9_IPV6_SRC_MASK
+	{ 1, 1, 8 },	// 30 - NF9_IPV6_DST_MASK
+	{ 4, 4, 0 },	// 31 - NF9_IPV6_FLOW_LABEL
+	{ 2, 2, 0 },	// 32 - NF9_ICMP_TYPE
+
+	{ 0, 0, 0},		// 33 - not implemented
+
+	{ 4, 4, 0}, 	// 34 - NF9_SAMPLING_INTERVAL
+	{ 1, 1, 0}, 	// 35 - NF9_SAMPLING_ALGORITHM
+
+	{ 0, 0, 0}, { 0, 0, 0}, // 36 - 37 not implemented
+
+	{ 1, 1, 0 },	// 38 - NF9_ENGINE_TYPE
+	{ 1, 1, 0 },	// 39 - NF9_ENGINE_ID
+
+	// 40 - 47   not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+	
+	{ 1, 2, 0}, 	// 48 - NF9_FLOW_SAMPLER_ID
+	{ 1, 1, 0}, 	// 49 - FLOW_SAMPLER_MODE
+	{ 4, 4, 0}, 	// 50 - NF9_FLOW_SAMPLER_RANDOM_INTERVAL
+
+	// 51 - 54 not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	{ 1, 1, 8 }, 	// 55 - NF9_DST_TOS
+
+	// 56 - 57   MACs
+	{ 8, 8, 20}, 	// 56 NF9_IN_SRC_MAC
+	{ 8, 8, 20}, 	// 57 NF9_OUT_DST_MAC
+
+	{ 2, 2, 13}, 	// 58 - NF9_SRC_VLAN
+	{ 2, 2, 13}, 	// 59 - NF9_DST_VLAN
+
+	// 60   not implemented
+	{ 0, 0, 0}, 
+
+	{ 1, 1, 8 }, 	// 61 - NF9_DIRECTION
+
+	{ 16, 16, 10}, 	// 62 - NF9_V6_NEXT_HOP
+	{ 16, 16, 12}, 	// 63 - NF9_BPG_V6_NEXT_HOP
+
+	// 64 - 69   not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 70
+	{ 4, 4, 22}, 	// 70 - MPLS_LABEL_1
+	{ 4, 4, 22}, 	// 71 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 72 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 73 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 74 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 75 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 76 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 77 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 78 - MPLS_LABEL_2
+	{ 4, 4, 22}, 	// 79 - MPLS_LABEL_2
+
+	// 80 - 81   MACs
+	{ 8, 8, 21}, 	// 80 NF9_IN_DST_MAC
+	{ 8, 8, 21}, 	// 81 NF9_OUT_SRC_MAC
+
+	// 82 - 87   not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 88 not implemented
+	{ 0, 0, 0}, 
+
+	{ 1, 1, 0 }, 	// 89 - NF9_FORWARDING_STATUS
+
+	// 90 - 95   not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 96 - 103  not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 104 - 111 not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 112 - 119 not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, 
+
+	// 120 - 127 not implemented
+	{ 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}, { 0, 0, 0}  
+};
 
 /* this is an ugly hack but it works */
 static patricia_tree_t *nf_source_tree = NULL;
+static int max_num_v9_tags = 0;
+
+static input_translation_t *
+translation_table_new(exporter_t *exporter, uint16_t id)
+{
+	input_translation_t **table;
+
+	table = &(exporter->input_translation_table);
+	while (*table)
+	{
+		table = &((*table)->next);
+	}
+
+	// Allocate enough space for all potential v9 tags, which we support
+	// so template refreshing may change the table size without dange of overflowing 
+	*table = malloc(sizeof(input_translation_t) + max_num_v9_tags * sizeof(translation_element_t));
+	(*table)->id   = id;
+	(*table)->next = NULL;
+
+	DPRINTF("got new translation table %u\n", id);
+
+	return *table;
+}
+
+static inline input_translation_t *
+translation_table_find(exporter_t *exporter, uint16_t id)
+{
+	input_translation_t *table;
+
+	if (exporter->current_table && (exporter->current_table->id == id))
+		return exporter->current_table;
+
+	for (table = exporter->input_translation_table; table != NULL; table = table->next)
+	{
+		if (table->id == id)
+		{
+			exporter->current_table = table;
+			return table;
+		}
+	}
+
+	DPRINTF("[%u] got translation table %u (%s)\n", exporter->exporter_id, id, table == NULL ? "not found" : "found");
+
+	exporter->current_table = table;
+	return table;
+}
 
 static exporter_t *
 exporter_correlate(uint32_t source_id)
@@ -219,6 +425,7 @@ exporter_correlate(uint32_t source_id)
 		return node->data;
 
 	e = calloc(sizeof(*e), 1);
+	e->exporter_id = source_id;
 	e->version = 9;
 
 	pfx = New_Prefix(AF_INET, &source_id, 32);
@@ -639,6 +846,7 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 
 			while (!parsedone && ((bufiter - pkt) < info->len))
 			{
+				input_translation_t *table;
 				netflow_v9tmpl_t *tmpl = (netflow_v9tmpl_t *) bufiter;
 
 				tmpl->tmpl_id = ntohs(tmpl->tmpl_id);
@@ -646,6 +854,8 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 
 				DPRINTF("      Template ID         : %u\n", tmpl->tmpl_id);
 				DPRINTF("      Field Count         : %u\n", tmpl->fieldcount);
+
+				table = translation_table_new(exp, tmpl->tmpl_id);
 
 				bufiter += sizeof(netflow_v9tmpl_t);
 
@@ -662,7 +872,13 @@ static void netflow_parse_v9(unsigned char *pkt, packet_info_t *info)
 		}
 		else
 		{
+			input_translation_t *table;
+
 			DPRINTF("    Flowset type          : %s\n", "DATA");
+
+			table = translation_table_find(exp, fshdr->flowset_id);
+
+			DPRINTF("      Translation object  : %p\n", table);
 		}
 
 		bufiter = (uint8_t *) fshdr;
@@ -742,8 +958,17 @@ void
 module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 {
 	mowgli_config_file_entry_t *ce;
+	int i;
 
 	nf_source_tree = New_Patricia(32);
+
+	for (i = 0; i < 128; i++)
+	{
+		if (element_info[i].min)
+			max_num_v9_tags++;
+	}
+
+	DPRINTF("%d recognized netflow v9 tags\n", max_num_v9_tags);
 
 	MOWGLI_ITER_FOREACH(ce, entry)
 	{
