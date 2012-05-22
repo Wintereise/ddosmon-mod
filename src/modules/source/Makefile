@@ -1,5 +1,5 @@
 MODULE = source
-SRCS = netflow.c pcap.c
+SRCS = netflow.c pcap.c linux-native.c
 
 include ../../../buildsys.mk
 include ../../../buildsys.module.mk
