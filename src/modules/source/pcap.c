@@ -53,7 +53,7 @@ pcap_correlate_flow(packet_info_t *info)
 	}
 
 	record = src->flows[hashv] =
-		flowcache_record_insert(src->flows[hashv], info->src_prt, info->dst_prt);
+		flowcache_record_insert(dst, src, src->flows[hashv], info->src_prt, info->dst_prt, info->ip_type);
 
 	return record;
 }

@@ -25,8 +25,23 @@
 #define FLOW_HASH_SIZE		65536 >> 12
 #define FLOW_HASH(src_port)	(src_port % FLOW_HASH_SIZE)
 
-typedef struct _flowrecord {
+typedef struct _flowrecord flowcache_record_t;
+
+typedef struct _flowcache_dst_host {
+	patricia_tree_t *src_host_tree;
+	struct in_addr addr;
+} flowcache_dst_host_t;
+
+typedef struct _flowcache_src_host {
+	flowcache_record_t *flows[FLOW_HASH_SIZE];
+	struct in_addr addr;
+} flowcache_src_host_t;
+
+struct _flowrecord {
 	struct _flowrecord *prev, *next;
+
+	struct _flowcache_src_host *src;
+	struct _flowcache_dst_host *dst;
 
 	time_t first_seen;
 	time_t last_seen;
@@ -37,19 +52,11 @@ typedef struct _flowrecord {
 
 	uint32_t bytes;
 	uint32_t packets;
-} flowcache_record_t;
 
-typedef struct {
-	patricia_tree_t *src_host_tree;
-	struct in_addr addr;
-} flowcache_dst_host_t;
+	uint8_t ip_type;
+};
 
-typedef struct {
-	flowcache_record_t *flows[FLOW_HASH_SIZE];
-	struct in_addr addr;
-} flowcache_src_host_t;
-
-flowcache_record_t *flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port);
+flowcache_record_t *flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port, uint8_t ip_type);
 flowcache_record_t *flowcache_record_delete(flowcache_record_t *head);
 flowcache_record_t *flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port);
 flowcache_dst_host_t *flowcache_dst_host_lookup(struct in_addr *addr);

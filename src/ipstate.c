@@ -87,7 +87,7 @@ ipstate_insert(uint32_t ip)
 	rec->addr = ip;
 
 	node = patricia_lookup(iprecord_trie, pfx);
-	node->data = rec;	
+	node->data = rec;
 
 	Deref_Prefix(pfx);
 
@@ -96,14 +96,15 @@ ipstate_insert(uint32_t ip)
 }
 
 void
-ipstate_reset_flowcount(struct in_addr *ip)
+ipstate_decr_flow(struct in_addr *ip, unsigned short ip_type)
 {
 	iprecord_t *rec;
-	int i;
 
 	rec = ipstate_insert(ip->s_addr);
-	for (i = 0; i < IPPROTO_MAX; i++)
-		rec->flows[i].count = 0;
+	if (rec->flows[ip_type].count > 0)
+		return;
+
+	rec->flows[ip_type].count--;
 }
 
 void

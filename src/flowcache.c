@@ -32,12 +32,16 @@ static magazine_t flowcache_src_magazine = MAGAZINE_INIT(sizeof(flowcache_src_ho
 static magazine_t flowcache_dst_magazine = MAGAZINE_INIT(sizeof(flowcache_dst_host_t));
 
 flowcache_record_t *
-flowcache_record_insert(flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port)
+flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port, uint8_t ip_type)
 {
 	flowcache_record_t *child;
 
 	child = magazine_alloc(&flowcache_record_magazine);
 	child->next = parent;
+
+	child->src = src;
+	child->dst = dst;
+	child->ip_type = ip_type;
 
 	/* reparent the parent node if one is present. */
 	if (child->next != NULL)
@@ -67,6 +71,7 @@ flowcache_record_delete(flowcache_record_t *head)
 			next->prev->next = next;
 	}
 
+	ipstate_decr_flow(&head->dst->addr, head->ip_type);
 	magazine_release(&flowcache_record_magazine, head);
 
 	return next;
@@ -171,7 +176,6 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 	DPRINTF("clearing flow cache for target %p\n", dst);
 
 	Destroy_Patricia(dst->src_host_tree, (void_fn_t) flowcache_src_free);
-	ipstate_reset_flowcount(&dst->addr);
 
 	magazine_release(&flowcache_dst_magazine, dst);
 }
@@ -189,6 +193,6 @@ flowcache_setup(mowgli_eventloop_t *eventloop)
 {
 	DPRINTF("initializing flow cache (eventloop %p)\n", eventloop);
 
-	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, 3600);
+	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, 600);
 	dst_host_tree = New_Patricia(32);
 }

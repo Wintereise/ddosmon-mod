@@ -859,7 +859,7 @@ flowcache_correlate_v1(netflow_v1rec_t *rec)
 	}
 
 	record = src->flows[hashv] =
-		flowcache_record_insert(src->flows[hashv], rec->src_port, rec->dst_port);
+		flowcache_record_insert(dst, src, src->flows[hashv], rec->src_port, rec->dst_port, rec->proto);
 
 	return record;
 }
@@ -883,7 +883,7 @@ flowcache_correlate_v5(netflow_v5rec_t *rec)
 	}
 
 	record = src->flows[hashv] =
-		flowcache_record_insert(src->flows[hashv], rec->src_port, rec->dst_port);
+		flowcache_record_insert(dst, src, src->flows[hashv], rec->src_port, rec->dst_port, rec->proto);
 
 	return record;
 }
@@ -907,7 +907,7 @@ flowcache_correlate_v7(netflow_v7rec_t *rec)
 	}
 
 	record = src->flows[hashv] =
-		flowcache_record_insert(src->flows[hashv], rec->src_port, rec->dst_port);
+		flowcache_record_insert(dst, src, src->flows[hashv], rec->src_port, rec->dst_port, rec->proto);
 
 	return record;
 }
