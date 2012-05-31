@@ -61,6 +61,7 @@ flowcache_record_t *flowcache_record_delete(flowcache_record_t *head);
 flowcache_record_t *flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port);
 flowcache_dst_host_t *flowcache_dst_host_lookup(struct in_addr *addr);
 flowcache_src_host_t *flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr);
+void flowcache_dst_clear(struct in_addr *addr);
 
 void flowcache_setup(mowgli_eventloop_t *eventloop);
 

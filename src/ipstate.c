@@ -44,6 +44,7 @@ ipstate_clear_record(iprecord_t *rec)
 
 	Deref_Prefix(pfx);
 
+	flowcache_dst_clear(&sin);
 	magazine_release(&iprecord_magazine, rec);
 }
 

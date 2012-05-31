@@ -180,19 +180,22 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 	magazine_release(&flowcache_dst_magazine, dst);
 }
 
-static void
-flowcache_clear(void *unused)
+void
+flowcache_dst_clear(struct in_addr *addr)
 {
-	(void) unused;
+	flowcache_dst_host_t *dst;
 
-	Clear_Patricia(dst_host_tree, (void_fn_t) flowcache_dst_free);
+	dst = flowcache_dst_host_lookup(addr);
+	if (dst == NULL)
+		return;
+
+	flowcache_dst_free(dst);
 }
 
 void
 flowcache_setup(mowgli_eventloop_t *eventloop)
 {
-	DPRINTF("initializing flow cache (eventloop %p)\n", eventloop);
+	(void) eventloop;
 
-	mowgli_timer_add(eventloop, "flowcache_clear", flowcache_clear, NULL, 600);
 	dst_host_tree = New_Patricia(32);
 }
