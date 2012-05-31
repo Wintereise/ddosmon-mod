@@ -49,4 +49,6 @@ void ipstate_update(packet_info_t *packet);
 void ipstate_setup(mowgli_eventloop_t *eventloop);
 void ipstate_decr_flow(struct in_addr *ip, unsigned short ip_type);
 
+extern int ip_expiry_time;
+
 #endif

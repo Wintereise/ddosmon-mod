@@ -26,6 +26,7 @@
  */
 
 #include "stdinc.h"
+#include "ipstate.h"
 #include "modulefactory.h"
 #include "sourcefactory.h"
 
@@ -44,7 +45,9 @@ conf_process(mowgli_eventloop_t *eventloop)
 
 	MOWGLI_ITER_FOREACH(ce, cf->entries)
 	{
-		if (!strcasecmp(ce->varname, "module"))
+		if (!strcasecmp(ce->varname, "ipstate-expiry-time"))
+			ip_expiry_time = atoi(ce->vardata);
+		else if (!strcasecmp(ce->varname, "module"))
 			module_open(eventloop, ce->vardata, ce->entries);
 		else if (!strcasecmp(ce->varname, "source"))
 			source_open(eventloop, ce->vardata, ce->entries);

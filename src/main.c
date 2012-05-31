@@ -100,9 +100,9 @@ main(int argc, const char *argv[])
 
 	eventloop = mowgli_eventloop_create();
 
+	conf_process(eventloop);
 	ipstate_setup(eventloop);
 	flowcache_setup(eventloop);
-	conf_process(eventloop);
 
 	/* everything is set up, lets run the app */
 	mowgli_eventloop_run(eventloop);

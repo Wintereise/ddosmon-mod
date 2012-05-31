@@ -26,6 +26,8 @@
 
 #define IP_EXPIRY_TIME		(600)
 
+int ip_expiry_time = IP_EXPIRY_TIME;
+
 static patricia_tree_t *iprecord_trie = NULL;
 static magazine_t iprecord_magazine = MAGAZINE_INIT(sizeof(iprecord_t));
 
@@ -160,5 +162,5 @@ ipstate_setup(mowgli_eventloop_t *eventloop)
 	iprecord_trie = New_Patricia(32);
 	DPRINTF("iprecord trie %p\n", iprecord_trie);
 
-	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, IP_EXPIRY_TIME);
+	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, ip_expiry_time);
 }
