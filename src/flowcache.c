@@ -52,6 +52,9 @@ flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, fl
 	child->src_port = src_port;
 	child->dst_port = dst_port;
 
+	child->src->flowcount++;
+	child->dst->flowcount++;
+
 	return child;
 }
 
@@ -70,6 +73,9 @@ flowcache_record_delete(flowcache_record_t *head)
 		if (next->prev)
 			next->prev->next = next;
 	}
+
+	head->dst->flowcount--;
+	head->src->flowcount--;
 
 	ipstate_decr_flow(&head->dst->addr, head->ip_type);
 	magazine_release(&flowcache_record_magazine, head);

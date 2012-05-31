@@ -30,11 +30,13 @@ typedef struct _flowrecord flowcache_record_t;
 typedef struct _flowcache_dst_host {
 	patricia_tree_t *src_host_tree;
 	struct in_addr addr;
+	uint32_t flowcount;
 } flowcache_dst_host_t;
 
 typedef struct _flowcache_src_host {
 	flowcache_record_t *flows[FLOW_HASH_SIZE];
 	struct in_addr addr;
+	uint32_t flowcount;
 } flowcache_src_host_t;
 
 struct _flowrecord {
