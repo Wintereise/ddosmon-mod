@@ -60,8 +60,8 @@ ipstate_expire(void *unused)
 	{
 		iprecord_t *rec = node->data;
 
-		if ((rec->last + IP_EXPIRY_TIME) <= ts)
-			ipstate_clear_record(n->data);
+		if (rec != NULL && (rec->last + IP_EXPIRY_TIME) <= ts)
+			ipstate_clear_record(rec);
 	}
 	PATRICIA_WALK_END;
 }
