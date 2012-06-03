@@ -53,8 +53,6 @@ ipstate_clear_record(iprecord_t *rec)
 static void
 ipstate_expire(void *unused)
 {
-	mowgli_node_t *n, *tn;
-	mowgli_list_t l = { NULL, NULL, 0 };
 	patricia_node_t *node;
 	time_t ts = mowgli_eventloop_get_time(eventloop);
 
@@ -62,18 +60,10 @@ ipstate_expire(void *unused)
 	{
 		iprecord_t *rec = node->data;
 
-		if ((rec->last + IP_EXPIRY_TIME) > ts)
-			continue;
-
-		mowgli_node_add(rec, mowgli_node_create(), &l);
+		if ((rec->last + IP_EXPIRY_TIME) <= ts)
+			ipstate_clear_record(n->data);
 	}
 	PATRICIA_WALK_END;
-
-	MOWGLI_ITER_FOREACH_SAFE(n, tn, l.head)
-	{
-		ipstate_clear_record(n->data);
-		mowgli_node_delete(n, &l);
-	}
 }
 
 static iprecord_t *
