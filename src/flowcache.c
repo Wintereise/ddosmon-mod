@@ -111,6 +111,8 @@ flowcache_dst_host_lookup(struct in_addr *addr)
 	patricia_node_t *node;
 	flowcache_dst_host_t *host;
 
+	return_val_if_fail(addr != NULL, NULL);
+
         pfx = New_Prefix(AF_INET, addr, 32);
 	node = patricia_search_exact(dst_host_tree, pfx);
 	Deref_Prefix(pfx);
@@ -136,6 +138,9 @@ flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
 	prefix_t *pfx;
 	patricia_node_t *node;
 	flowcache_src_host_t *host;
+
+	return_val_if_fail(dst != NULL, NULL);
+	return_val_if_fail(addr != NULL, NULL);
 
         pfx = New_Prefix(AF_INET, addr, 32);
 	node = patricia_search_exact(dst->src_host_tree, pfx);
