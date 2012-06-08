@@ -194,13 +194,27 @@ flowcache_dst_free(flowcache_dst_host_t *dst)
 void
 flowcache_dst_clear(struct in_addr *addr)
 {
+	patricia_node_t *node;
 	flowcache_dst_host_t *dst;
+	prefix_t *pfx;
 
-	dst = flowcache_dst_host_lookup(addr);
-	if (dst == NULL)
+	pfx = New_Prefix(AF_INET, addr, 32);
+
+	node = patricia_search_exact(dst_host_tree, pfx);
+	if (node == NULL)
+	{
+		Deref_Prefix(pfx);
 		return;
+	}
 
-	flowcache_dst_free(dst);
+	dst = node->data;
+
+	if (dst != NULL)
+		flowcache_dst_free(dst);
+
+	patricia_remove(dst_host_tree, node);
+
+	Deref_Prefix(pfx);
 }
 
 void
