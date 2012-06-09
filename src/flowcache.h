@@ -34,14 +34,14 @@ typedef struct _flowcache_dst_host {
 } flowcache_dst_host_t;
 
 typedef struct _flowcache_src_host {
-	flowcache_record_t *flows[FLOW_HASH_SIZE];
+	mowgli_list_t flows[FLOW_HASH_SIZE];
 	struct in_addr addr;
 	uint32_t flowcount;
 	time_t last_seen;
 } flowcache_src_host_t;
 
 struct _flowrecord {
-	struct _flowrecord *prev, *next;
+	mowgli_node_t node;
 
 	struct _flowcache_src_host *src;
 	struct _flowcache_dst_host *dst;
@@ -59,7 +59,7 @@ struct _flowrecord {
 	uint8_t ip_type;
 };
 
-flowcache_record_t *flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port, uint8_t ip_type);
+flowcache_record_t *flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port, uint8_t ip_type);
 flowcache_record_t *flowcache_record_delete(flowcache_record_t *head);
 flowcache_record_t *flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port);
 flowcache_dst_host_t *flowcache_dst_host_lookup(struct in_addr *addr);

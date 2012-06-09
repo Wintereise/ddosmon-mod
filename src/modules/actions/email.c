@@ -89,10 +89,11 @@ list_flows(FILE *out, packet_info_t *packet, int max_lines)
 
 		for (hashv = 0; hashv < FLOW_HASH_SIZE; hashv++)
 		{
-			flowcache_record_t *record;
+			mowgli_node_t *node;
 
-			MOWGLI_ITER_FOREACH(record, src->flows[hashv])
+			MOWGLI_ITER_FOREACH(node, src->flows[hashv].head)
 			{
+				flowcache_record_t *record = node->data;
 				time_t age = now - record->last_seen;
 
 				if (age > 60)

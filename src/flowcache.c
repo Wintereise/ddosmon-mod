@@ -32,20 +32,16 @@ static magazine_t flowcache_src_magazine = MAGAZINE_INIT(sizeof(flowcache_src_ho
 static magazine_t flowcache_dst_magazine = MAGAZINE_INIT(sizeof(flowcache_dst_host_t));
 
 flowcache_record_t *
-flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, flowcache_record_t *parent, uint16_t src_port, uint16_t dst_port, uint8_t ip_type)
+flowcache_record_insert(flowcache_dst_host_t *dst, flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port, uint8_t ip_type)
 {
 	flowcache_record_t *child;
 
 	child = magazine_alloc(&flowcache_record_magazine);
-	child->next = parent;
+	mowgli_node_add(child, &child->node, &src->flows[FLOW_HASH(src_port)]);
 
 	child->src = src;
 	child->dst = dst;
 	child->ip_type = ip_type;
-
-	/* reparent the parent node if one is present. */
-	if (child->next != NULL)
-		child->next->prev = child;
 
 	child->first_seen = src->last_seen = child->last_seen = mowgli_eventloop_get_time(eventloop);
 
@@ -65,14 +61,7 @@ flowcache_record_delete(flowcache_record_t *head)
 
 	DPRINTF("destroying flow %p (%d -> %d)\n", head, head->src_port, head->dst_port);
 
-	next = head->next;
-	if (next)
-	{
-		next->prev = head->prev;
-
-		if (next->prev)
-			next->prev->next = next;
-	}
+	mowgli_node_delete(&head->node, &head->src->flows[FLOW_HASH(head->src_port)]);
 
 	head->dst->flowcount--;
 	head->src->flowcount--;
@@ -86,18 +75,21 @@ flowcache_record_delete(flowcache_record_t *head)
 flowcache_record_t *
 flowcache_record_lookup(flowcache_src_host_t *src, uint16_t src_port, uint16_t dst_port)
 {
-	flowcache_record_t *head, *node;
+	mowgli_node_t *node;
+	flowcache_record_t *record;
 
 #ifdef VERBOSE_DEBUG
 	DPRINTF("looking for flow %d -> %d for source %p hashv %d\n", src_port, dst_port, src, FLOW_HASH(src_port));
 #endif
 
-	for (head = src->flows[FLOW_HASH(src_port)], node = head; node != NULL; node = node->next)
+	MOWGLI_ITER_FOREACH(node, src->flows[FLOW_HASH(src_port)].head)
 	{
-		if (node->src_port == src_port && node->dst_port == dst_port)
+		record = node->data;
+
+		if (record->src_port == src_port && record->dst_port == dst_port)
 		{
-			src->last_seen = node->last_seen = mowgli_eventloop_get_time(eventloop);
-			return node;
+			src->last_seen = record->last_seen = mowgli_eventloop_get_time(eventloop);
+			return record;
 		}
 	}
 
@@ -163,6 +155,7 @@ flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
 static void
 flowcache_src_prune(flowcache_src_host_t *src, unsigned int ts_delta)
 {
+	mowgli_node_t *n, *tn;
 	flowcache_record_t *record;
 	time_t ts = mowgli_eventloop_get_time(eventloop);
 	int hashv;
@@ -171,22 +164,12 @@ flowcache_src_prune(flowcache_src_host_t *src, unsigned int ts_delta)
 
 	for (hashv = 0; hashv < FLOW_HASH_SIZE; hashv++)
 	{
-		record = src->flows[hashv];
-
-		while (record != NULL)
+		MOWGLI_ITER_FOREACH_SAFE(n, tn, src->flows[hashv].head)
 		{
+			record = n->data;
+
 			if (!ts_delta || ((record->last_seen + ts_delta) <= ts))
-			{
-				flowcache_record_t *t_record = record;
-
-				record = flowcache_record_delete(record);
-
-				/* ensure that src->flows[hashv] (flow root) is pointing to something valid */
-				if (t_record == src->flows[hashv])
-					src->flows[hashv] = record;
-			}
-			else
-				record = record->next;
+				flowcache_record_delete(record);
 		}
 	}
 }
