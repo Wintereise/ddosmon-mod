@@ -208,6 +208,12 @@ open_interface(const char *interface)
 		exit(EXIT_FAILURE);
 	}
 
+	if (pcap_setnonblock(handle_, 1, errbuf) < 0)
+	{
+		fprintf(stderr, "pcap_setnonblock() failed: %s\n", errbuf);
+		exit(EXIT_FAILURE);
+	}
+
 	return handle_;
 }
 
@@ -230,6 +236,19 @@ set_pcap_filter(pcap_t *handle, const char *filter, uint32_t netmask)
 }
 
 static void
+pcap_process_specific_pkt(void *user, struct pcap_pkthdr *h, const unsigned char *pkt)
+{
+	packet_info_t info;
+
+	info.packets = 1;
+	info.len = h->len;
+	info.ts = h->ts;
+	info.new_flow = 0;
+
+	dissect_ethernet(&info, pkt);
+}
+
+static void
 pcap_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eventloop_io_dir_t dir, void *userdata)
 {
 	pcap_t *handle = userdata;
@@ -238,16 +257,7 @@ pcap_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eve
 
 	DPRINTF("reading pcap/%p\n", handle);
 
-	while ((pkt = pcap_next(handle, &hdr)) != NULL)
-	{
-		packet_info_t info;
-		info.packets = 1;
-		info.len = hdr.len;
-		info.ts = hdr.ts;
-		info.new_flow = 0;
-
-		dissect_ethernet(&info, pkt);
-	}
+	pcap_dispatch(handle, -1, (pcap_handler) pcap_process_specific_pkt, NULL);
 }
 
 static int
