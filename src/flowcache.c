@@ -161,12 +161,13 @@ flowcache_src_host_lookup(flowcache_dst_host_t *dst, struct in_addr *addr)
 }
 
 static void
-flowcache_src_free(flowcache_src_host_t *src)
+flowcache_src_prune(flowcache_src_host_t *src, unsigned int ts_delta)
 {
 	flowcache_record_t *record;
+	time_t ts = mowgli_eventloop_get_time(eventloop);
 	int hashv;
 
-	DPRINTF("clearing flow cache for source %p\n", src);
+	DPRINTF("pruning flow cache for source %p\n", src);
 
 	for (hashv = 0; hashv < FLOW_HASH_SIZE; hashv++)
 	{
@@ -174,10 +175,18 @@ flowcache_src_free(flowcache_src_host_t *src)
 
 		while (record != NULL)
 		{
-			record = flowcache_record_delete(record);
+			if (!ts_delta || ((record->last_seen + ts_delta) <= ts))
+				record = flowcache_record_delete(record);
+			else
+				record = record->next;
 		}
 	}
+}
 
+static void
+flowcache_src_free(flowcache_src_host_t *src)
+{
+	flowcache_src_prune(src, 0);
 	magazine_release(&flowcache_src_magazine, src);
 }
 
