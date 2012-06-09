@@ -176,7 +176,15 @@ flowcache_src_prune(flowcache_src_host_t *src, unsigned int ts_delta)
 		while (record != NULL)
 		{
 			if (!ts_delta || ((record->last_seen + ts_delta) <= ts))
+			{
+				flowcache_record_t *t_record = record;
+
 				record = flowcache_record_delete(record);
+
+				/* ensure that src->flows[hashv] (flow root) is pointing to something valid */
+				if (t_record == src->flows[hashv])
+					src->flows[hashv] = record;
+			}
 			else
 				record = record->next;
 		}
