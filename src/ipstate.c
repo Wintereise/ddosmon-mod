@@ -58,12 +58,17 @@ ipstate_expire(void *unused)
 	patricia_node_t *node;
 	time_t ts = mowgli_eventloop_get_time(eventloop);
 
+	DPRINTF("starting to expire old entries, %d nodes\n", iprecord_trie->num_active_node);
+
 	PATRICIA_WALK(iprecord_trie->head, node)
 	{
 		iprecord_t *rec = node->data;
 
-		if (rec != NULL && (rec->last + IP_EXPIRY_TIME) <= ts)
+		if (rec != NULL && (rec->last + ip_expiry_time) <= ts)
+		{
+			DPRINTF("  node %p [ts:%ld] marked for expiry\n", rec, rec->last);
 			mowgli_node_add(rec, mowgli_node_create(), &clear_list);
+		}
 	}
 	PATRICIA_WALK_END;
 
@@ -73,6 +78,8 @@ ipstate_expire(void *unused)
 		mowgli_node_delete(n, &clear_list);
 		mowgli_node_free(n);
 	}
+
+	DPRINTF("expiry code finished, %d nodes remaining\n", iprecord_trie->num_active_node);
 }
 
 static iprecord_t *
@@ -166,8 +173,10 @@ ipstate_update(packet_info_t *packet)
 void
 ipstate_setup(mowgli_eventloop_t *eventloop)
 {
-	iprecord_trie = New_Patricia(32);
-	DPRINTF("iprecord trie %p\n", iprecord_trie);
+	int tock_period = ip_expiry_time / 4;
 
-	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, ip_expiry_time);
+	iprecord_trie = New_Patricia(32);
+	DPRINTF("iprecord trie %p, node lifetime %d, tock period %d\n", iprecord_trie, ip_expiry_time, tock_period);
+
+	mowgli_timer_add(eventloop, "ipstate_expire", ipstate_expire, NULL, tock_period);
 }
