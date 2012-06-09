@@ -54,4 +54,9 @@ extern mowgli_eventloop_t *eventloop;
 
 extern void module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *ce);
 
+#ifdef VALGRIND
+# undef HAVE_FORK
+# define NEVER_USE_MAGAZINE
+#endif
+
 #include "magazine.h"
