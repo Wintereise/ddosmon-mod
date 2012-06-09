@@ -37,6 +37,7 @@ typedef struct _flowcache_src_host {
 	flowcache_record_t *flows[FLOW_HASH_SIZE];
 	struct in_addr addr;
 	uint32_t flowcount;
+	time_t last_seen;
 } flowcache_src_host_t;
 
 struct _flowrecord {
