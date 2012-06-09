@@ -82,16 +82,34 @@ ipstate_expire(void *unused)
 	DPRINTF("expiry code finished, %d nodes remaining\n", iprecord_trie->num_active_node);
 }
 
-static iprecord_t *
-ipstate_insert(uint32_t ip)
+static inline iprecord_t *
+ipstate_lookup(struct in_addr *ip)
 {
 	iprecord_t *rec;
 	prefix_t *pfx;
 	patricia_node_t *node;
-	struct in_addr sin;
 
-	sin.s_addr = ip;
-	pfx = New_Prefix(AF_INET, &sin, 32);
+	pfx = New_Prefix(AF_INET, ip, 32);
+
+	node = patricia_search_exact(iprecord_trie, pfx);
+	if (node != NULL)
+	{
+		Deref_Prefix(pfx);
+		return node->data;
+	}
+
+	Deref_Prefix(pfx);
+	return NULL;
+}
+
+static iprecord_t *
+ipstate_insert(struct in_addr *ip)
+{
+	iprecord_t *rec;
+	prefix_t *pfx;
+	patricia_node_t *node;
+
+	pfx = New_Prefix(AF_INET, ip, 32);
 
 	node = patricia_search_exact(iprecord_trie, pfx);
 	if (node != NULL)
@@ -101,7 +119,7 @@ ipstate_insert(uint32_t ip)
 	}
 
 	rec = magazine_alloc(&iprecord_magazine);
-	rec->addr = ip;
+	rec->addr = ip->s_addr;
 
 	node = patricia_lookup(iprecord_trie, pfx);
 	node->data = rec;
@@ -117,8 +135,8 @@ ipstate_decr_flow(struct in_addr *ip, unsigned short ip_type)
 {
 	iprecord_t *rec;
 
-	rec = ipstate_insert(ip->s_addr);
-	if (rec->flows[ip_type].count > 0)
+	rec = ipstate_lookup(ip);
+	if (rec == NULL)
 		return;
 
 	rec->flows[ip_type].count--;
@@ -128,11 +146,8 @@ void
 ipstate_update(packet_info_t *packet)
 {
 	iprecord_t *rec;
-	uint32_t ip;
 
-	ip = packet->pkt_dst.s_addr;
-
-	rec = ipstate_insert(ip);
+	rec = ipstate_insert(&packet->pkt_dst);
 
 	rec->last = packet->ts.tv_sec;
 	rec->flows[packet->ip_type].current = packet->ts.tv_sec;
