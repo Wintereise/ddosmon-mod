@@ -1025,6 +1025,10 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 	DPRINTF("  Sequence                : %u\n", hdr->sequence);
 	DPRINTF("  Samplerate              : %u\n", hdr->samp_interval);
 
+	/* if sampling is disabled, samp_interval may be 0. */
+	if (!hdr->samp_interval)
+		hdr->samp_interval = 1;
+
 	for (flow = 0, rec = (netflow_v5rec_t *) (pkt + sizeof(netflow_v5hdr_t));
 	     flow < hdr->flowcount; flow++, rec++)
 	{
@@ -1055,8 +1059,8 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 		crec = flowcache_correlate_v5(rec);
 
-		int fakebps = (rec->bytes - crec->bytes) + (add_ethernet_overhead ? 14 : 0);
-		int fakepps = (rec->packets - crec->packets);
+		int fakebps = (rec->bytes - crec->bytes) * hdr->samp_interval;
+		int fakepps = (rec->packets - crec->packets) * hdr->samp_interval;
 
 		/* nenolod:
 		 * it seems that sometimes the netflow counters go backward... we don't want
@@ -1075,7 +1079,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			.dst_prt = rec->dst_port,
 			.ether_type = 8,
 			.ip_type = rec->proto != 0 ? rec->proto : NETFLOW_PROTO_TCP,
-			.len = fakebps,
+			.len = fakebps + (add_ethernet_overhead ? (14 * fakepps) : 0),
 			.packets = fakepps,
 			.tcp_flags = rec->tcp_flags,
 			.new_flow = !crec->injected,
