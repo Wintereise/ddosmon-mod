@@ -236,8 +236,6 @@ flowcache_prune_foreach_dst(prefix_t *pfx, flowcache_dst_host_t *dst)
 static void
 flowcache_prune(void *unused)
 {
-	patricia_node_t *dst_node;
-	mowgli_list_t prune_list = { NULL, NULL, 0 };
 	(void) unused;
 
 	patricia_process(dst_host_tree, (void_fn_t) flowcache_prune_foreach_dst);
