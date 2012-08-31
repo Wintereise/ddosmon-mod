@@ -36,6 +36,8 @@
 #endif
 
 static bool add_ethernet_overhead = false;
+static bool sflow_hack = false;
+static uint32_t sample_rate = 0;
 
 /*****************************************************************************************
  * Netflow packet layout and descriptions.                                               *
@@ -1029,6 +1031,10 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 	if (!hdr->samp_interval)
 		hdr->samp_interval = 1;
 
+	/* allow sample rate override */
+	if (sample_rate)
+		hdr->samp_interval = sample_rate;
+
 	for (flow = 0, rec = (netflow_v5rec_t *) (pkt + sizeof(netflow_v5hdr_t));
 	     flow < hdr->flowcount; flow++, rec++)
 	{
@@ -1059,8 +1065,11 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 		crec = flowcache_correlate_v5(rec);
 
-		int fakebps = (rec->bytes - crec->bytes) * hdr->samp_interval;
-		int fakepps = (rec->packets - crec->packets) * hdr->samp_interval;
+		int fakebps = sflow_hack ? rec->bytes : (rec->bytes - crec->bytes);
+		int fakepps = sflow_hack ? rec->packets : (rec->packets - crec->packets);
+
+		fakebps *= hdr->samp_interval;
+		fakepps *= hdr->samp_interval;
 
 		/* nenolod:
 		 * it seems that sometimes the netflow counters go backward... we don't want
@@ -1091,8 +1100,17 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 
 		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
 		{
-			crec->bytes = rec->bytes;
-			crec->packets = rec->packets;
+			if (sflow_hack)
+			{
+				crec->bytes += rec->bytes;
+				crec->packets += rec->packets;
+			}
+			else
+			{
+				crec->bytes = rec->bytes;
+				crec->packets = rec->packets;
+			}
+
 			continue;
 		}
 
@@ -1375,6 +1393,10 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 	{
 		if (!strcasecmp(ce->varname, "add-ethernet-overhead"))
 			add_ethernet_overhead = true;
+		else if (!strcasecmp(ce->varname, "sflow-hack"))
+			sflow_hack = true;
+		else if (!strcasecmp(ce->varname, "sample-rate"))
+			sample_rate = atoi(ce->vardata);
 	}
 
 	source_register("netflow", netflow_prepare);
