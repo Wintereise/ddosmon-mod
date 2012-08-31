@@ -244,8 +244,6 @@ flowcache_prune(void *unused)
 void
 flowcache_setup(mowgli_eventloop_t *eventloop)
 {
-	(void) eventloop;
-
 	dst_host_tree = New_Patricia(32);
 	mowgli_timer_add(eventloop, "flowcache_prune", flowcache_prune, NULL, ip_expiry_time / 4);
 }
