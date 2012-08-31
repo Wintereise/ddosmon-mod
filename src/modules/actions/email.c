@@ -102,7 +102,7 @@ list_flows(FILE *out, packet_info_t *packet, int max_lines)
 				if (--max_lines == 0)
 					return;
 
-				fprintf(out, "%-5d. %s:%u -> %s:%u\n       [%u bytes, %u packets, last seen %ld seconds ago]\n",
+				fprintf(out, "%05d. %s:%u -> %s:%u\n       [%u bytes, %u packets, last seen %ld seconds ago]\n",
 					++i, srcbuf, record->src_port, dstbuf, record->dst_port, record->bytes, record->packets, age);
 			}
 		}
