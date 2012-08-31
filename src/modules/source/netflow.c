@@ -1117,8 +1117,16 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 		ipstate_update(&inject);
 		crec->injected = true;
 
-		crec->bytes = rec->bytes;
-		crec->packets = rec->packets;
+		if (sflow_hack)
+		{
+			crec->bytes += rec->bytes;
+			crec->packets += rec->packets;
+		}
+		else
+		{
+			crec->bytes = rec->bytes;
+			crec->packets = rec->packets;
+		}
 	}
 }
 
