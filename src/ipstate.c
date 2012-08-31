@@ -38,7 +38,7 @@ ipstate_clear_record(iprecord_t *rec)
 	patricia_node_t *node;
 	struct in_addr sin;
 
-	sin.s_addr = rec->addr;
+	sin.s_addr = rec->addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(iprecord_trie, pfx);
@@ -119,7 +119,7 @@ ipstate_insert(struct in_addr *ip)
 	}
 
 	rec = magazine_alloc(&iprecord_magazine);
-	rec->addr = ip->s_addr;
+	rec->addr.s_addr = ip->s_addr;
 
 	node = patricia_lookup(iprecord_trie, pfx);
 	node->data = rec;
@@ -134,37 +134,67 @@ void
 ipstate_decr_flow(struct in_addr *ip, unsigned short ip_type)
 {
 	iprecord_t *rec;
+	flowdata_t *flow;
 
 	rec = ipstate_lookup(ip);
 	if (rec == NULL)
 		return;
 
-	rec->flows[ip_type].count--;
+	flow = ipstate_lookup_flowdata(rec, ip_type);
+	if (flow == NULL)
+		return;
+
+	flow->count--;
+}
+
+void
+ipstate_incr_flow(struct in_addr *ip, unsigned short ip_type)
+{
+	iprecord_t *rec;
+	flowdata_t *flow;
+
+	rec = ipstate_lookup(ip);
+	if (rec == NULL)
+		return;
+
+	flow = ipstate_lookup_flowdata(rec, ip_type);
+	if (flow == NULL)
+		return;
+
+	flow->count++;
 }
 
 void
 ipstate_update(packet_info_t *packet)
 {
 	iprecord_t *rec;
+	flowdata_t *flow;
 
 	rec = ipstate_insert(&packet->pkt_dst);
-
 	rec->last = packet->ts.tv_sec;
-	rec->flows[packet->ip_type].current = packet->ts.tv_sec;
-	rec->flows[packet->ip_type].bytes_pending += packet->len;
-	rec->flows[packet->ip_type].packets_pending += packet->packets;
 
 	if (packet->new_flow)
-		rec->flows[packet->ip_type].count++;
+		ipstate_incr_flow(&packet->pkt_dst, packet->ip_type);
 
-	if (rec->flows[packet->ip_type].last == 0)
-		rec->flows[packet->ip_type].last = rec->flows[packet->ip_type].current;
-
-	if (rec->flows[packet->ip_type].last != rec->flows[packet->ip_type].current)
+	flow = ipstate_lookup_flowdata(rec, packet->ip_type);
+	if (flow == NULL)
 	{
-		rec->flows[packet->ip_type].flow = rec->flows[packet->ip_type].bytes_pending / (rec->flows[packet->ip_type].current - rec->flows[packet->ip_type].last);
-		rec->flows[packet->ip_type].flow *= 8;
-		rec->flows[packet->ip_type].pps = rec->flows[packet->ip_type].packets_pending / (rec->flows[packet->ip_type].current - rec->flows[packet->ip_type].last);
+		DPRINTF("eh?  no flowdata journal entries for iprecord %p\n", rec);
+		return;
+	}
+
+	flow->current = packet->ts.tv_sec;
+	flow->bytes_pending += packet->len;
+	flow->packets_pending += packet->packets;
+
+	if (flow->last == 0)
+		flow->last = flow->current;
+
+	if (flow->last != flow->current)
+	{
+		flow->flow = flow->bytes_pending / (flow->current - flow->last);
+		flow->flow *= 8;
+		flow->pps = flow->packets_pending / (flow->current - flow->last);
 
 #ifdef DEBUG
 		char dst[INET6_ADDRSTRLEN];
@@ -172,16 +202,16 @@ ipstate_update(packet_info_t *packet)
 		inet_ntop(AF_INET, &packet->pkt_dst, dst, INET6_ADDRSTRLEN);
 
 		DPRINTF("      IP %s has received %ld bytes/%ld packets. (+%zu B/+%d P) %f kbps %ld pps %d active\n", dst,
-			rec->flows[packet->ip_type].bytes, rec->flows[packet->ip_type].packets, packet->len, packet->packets, rec->flows[packet->ip_type].flow / 1000., rec->flows[packet->ip_type].pps,
-			rec->flows[packet->ip_type].count);
+			flow->bytes, flow->packets, packet->len, packet->packets, flow->flow / 1000., flow->pps,
+			flow->count);
 #endif
 		HOOK_CALL(HOOK_CHECK_TRIGGER, packet, rec);
 
-		rec->flows[packet->ip_type].bytes += rec->flows[packet->ip_type].bytes_pending;
-		rec->flows[packet->ip_type].packets += rec->flows[packet->ip_type].packets_pending;
-		rec->flows[packet->ip_type].last = rec->flows[packet->ip_type].current;
+		flow->bytes += flow->bytes_pending;
+		flow->packets += flow->packets_pending;
+		flow->last = flow->current;
 
-		rec->flows[packet->ip_type].bytes_pending = rec->flows[packet->ip_type].packets_pending = 0;
+		flow->bytes_pending = flow->packets_pending = 0;
 	}
 }
 

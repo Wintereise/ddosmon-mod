@@ -122,6 +122,7 @@ send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data
 	time_t t;
 	struct tm tm;
 	email_target_t *target = data;
+	flowdata_t *flow;
 
 	snprintf(emailbuf, sizeof emailbuf, "%s %s", target->mta, target->alerts_to);
 
@@ -170,10 +171,17 @@ send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data
 	fprintf(out, "Target IP: %s/%d\n", dstbuf, packet->dst_prt);
 	fprintf(out, "Protocol : %s\n", get_protocol(packet->ip_type));
 
+	flow = ipstate_lookup_flowdata(&rec->irec, packet->ip_type);
+	if (flow == NULL)
+	{
+		fclose(out);
+		return;
+	}
+
 	fprintf(out, "\nQuantized attack statistics:\n");
-	fprintf(out, "MBPS     : %.2f\n", (rec->irec.flows[packet->ip_type].flow / 1000000.));
-	fprintf(out, "PPS      : %ld\n", rec->irec.flows[packet->ip_type].pps);
-	fprintf(out, "AFLS     : %u\n", rec->irec.flows[packet->ip_type].count);
+	fprintf(out, "MBPS     : %.2f\n", (flow->flow / 1000000.));
+	fprintf(out, "PPS      : %ld\n", flow->pps);
+	fprintf(out, "AFLS     : %u\n", flow->count);
 
 	list_flows(out, packet, target->max_flowcache_lines);
 

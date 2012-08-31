@@ -93,7 +93,7 @@ expire_dynamic_trigger(void *data)
 
 	run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
 
-	sin.s_addr = rec->irec.addr;
+	sin.s_addr = rec->irec.addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -112,7 +112,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	patricia_node_t *node;
 	struct in_addr sin;
 
-	if (ban_find(irec->addr) != NULL)
+	if (ban_find(irec->addr.s_addr) != NULL)
 		return NULL;
 
 	rec = calloc(sizeof(banrecord_t), 1);
@@ -123,7 +123,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	rec->added = mowgli_eventloop_get_time(eventloop);
 	rec->expiry_ts = rec->added + (t->expiry ? t->expiry : expiry);
 
-	sin.s_addr = irec->addr;
+	sin.s_addr = irec->addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -142,6 +142,11 @@ static void
 check_trigger(packet_info_t *packet, iprecord_t *rec)
 {
 	trigger_t *i;
+	flowdata_t *flow;
+
+	flow = ipstate_lookup_flowdata(rec, packet->ip_type);
+	if (flow == NULL)
+		return;
 
 	for (i = t_list[packet->ip_type]; i != NULL; i = i->next)
 	{
@@ -151,11 +156,11 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 
 		DPRINTF("check trigger packet %p record %p protocol %d pktproto %d\n", packet, rec, i->protocol, packet->ip_type);
 
-		mbps = (int) floor((rec->flows[packet->ip_type].flow / 1000000.));
-		pps = rec->flows[packet->ip_type].pps;
+		mbps = (int) floor((flow->flow / 1000000.));
+		pps = flow->pps;
 
-		mbps_ratio = (float) ((rec->flows[packet->ip_type].count + 1) / (mbps + 1));
-		pps_ratio = (float) ((rec->flows[packet->ip_type].count + 1) / (pps + 1));
+		mbps_ratio = (float) ((flow->count + 1) / (mbps + 1));
+		pps_ratio = (float) ((flow->count + 1) / (pps + 1));
 
 		if (i->flow_mbps_ratio > 0.0 && i->flow_mbps_ratio < mbps_ratio)
 			do_trigger = 1;
@@ -163,7 +168,7 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 		if (i->flow_pps_ratio > 0.0 && i->flow_pps_ratio < pps_ratio)
 			do_trigger = 1;
 
-		if (i->minimum_flows && i->minimum_flows > rec->flows[packet->ip_type].count)
+		if (i->minimum_flows && i->minimum_flows > flow->count)
 			do_trigger = 0;
 
 		if (i->minimum_mbps && i->minimum_mbps > mbps)

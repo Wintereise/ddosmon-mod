@@ -90,7 +90,7 @@ expire_trigger(void *data)
 
 	run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
 
-	sin.s_addr = rec->irec.addr;
+	sin.s_addr = rec->irec.addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -109,7 +109,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	patricia_node_t *node;
 	struct in_addr sin;
 
-	if (ban_find(irec->addr) != NULL)
+	if (ban_find(irec->addr.s_addr) != NULL)
 		return NULL;
 
 	rec = calloc(sizeof(banrecord_t), 1);
@@ -120,7 +120,7 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	rec->added = mowgli_eventloop_get_time(eventloop);
 	rec->expiry_ts = rec->added + (t->expiry ? t->expiry : expiry);
 
-	sin.s_addr = irec->addr;
+	sin.s_addr = irec->addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -139,6 +139,11 @@ static void
 check_trigger(packet_info_t *packet, iprecord_t *rec)
 {
 	trigger_t *i;
+	flowdata_t *flow;
+
+	flow = ipstate_lookup_flowdata(rec, packet->ip_type);
+	if (flow == NULL)
+		return;
 
 	for (i = t_list[packet->ip_type]; i != NULL; i = i->next)
 	{
@@ -147,8 +152,8 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 
 		DPRINTF("check trigger packet %p record %p protocol %d pktproto %d\n", packet, rec, i->protocol, packet->ip_type);
 
-		mbps = (int) floor((rec->flows[packet->ip_type].flow / 1000000.));
-		pps = rec->flows[packet->ip_type].pps;
+		mbps = (int) floor((flow->flow / 1000000.));
+		pps = flow->pps;
 
 		DPRINTF("... pps %d mbps %d target_pps %d target_mbps %d\n", pps, mbps, i->target_pps, i->target_mbps);
 
@@ -167,7 +172,7 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 		if (i->tcp_synonly && packet->tcp_flags != TCP_SYN)
 			do_trigger = 0;
 
-		if (i->target_flowcount && rec->flows[packet->ip_type].count < i->target_flowcount)
+		if (i->target_flowcount && flow->count < i->target_flowcount)
 			do_trigger = 0;
 
 		DPRINTF("trigger %p conditions %s for flow %p\n", i, do_trigger == 1 ? "met" : "not met", rec);
