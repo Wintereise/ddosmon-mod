@@ -41,7 +41,7 @@ ipstate_clear_record(iprecord_t *rec)
 	sin.s_addr = rec->addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
-	node = patricia_lookup(iprecord_trie, pfx);
+	node = patricia_search_exact(iprecord_trie, pfx);
 	patricia_remove(iprecord_trie, node);
 
 	Deref_Prefix(pfx);
