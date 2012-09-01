@@ -269,7 +269,7 @@ New_Prefix (int family, void *dest, int bitlen)
 /* ascii2prefix
  */
 prefix_t *
-ascii2prefix (int family, char *string)
+ascii2prefix (int family, const char *string)
 {
     u_long bitlen, maxbitlen = 0;
     char *cp;
@@ -980,7 +980,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 /* { from demo.c */
 
 patricia_node_t *
-make_and_lookup (patricia_tree_t *tree, char *string)
+make_and_lookup (patricia_tree_t *tree, const char *string)
 {
     prefix_t *prefix;
     patricia_node_t *node;
