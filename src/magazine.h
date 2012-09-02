@@ -21,40 +21,28 @@
 #define __MAGAZINE_H
 
 typedef struct {
-	void **data;
+	mowgli_heap_t *heap;
 	size_t object_size;
-	size_t object_count;
-	size_t object_position;
 } magazine_t;
 
-#define MAGAZINE_INIT(size) \
-	(magazine_t){ .data = NULL, .object_size = (size), .object_count = 0, .object_position = 0 }
+#define MAGAZINE_INIT(size) (magazine_t){ .heap = NULL, .object_size = (size) }
 
 #ifndef NEVER_USE_MAGAZINE
 
 static inline void *magazine_alloc(magazine_t *mag)
 {
-	void *ptr;
-
-	if (mag->object_count == mag->object_position)
+	if (mag->heap == NULL)
 	{
-		mag->object_count += 1;
-		mag->data = realloc(mag->data, sizeof (void *) * mag->object_count);
-		mag->data[mag->object_position] = malloc(mag->object_size);
+		DPRINTF("%s\n", "magazine_alloc() is deprecated, use mowgli_heap_alloc() instead.");
+		mag->heap = mowgli_heap_create(mag->object_size, 1024, BH_NOW);
 	}
 
-	ptr = mag->data[mag->object_position];
-	mag->object_position++;
-
-	memset(ptr, 0, mag->object_size);
-
-	return ptr;
+	return mowgli_heap_alloc(mag->heap);
 }
 
 static inline void magazine_release(magazine_t *mag, void *addr)
 {
-	mag->object_position--;
-	mag->data[mag->object_position] = addr;
+	mowgli_heap_free(mag->heap, addr);
 }
 
 #else

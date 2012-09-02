@@ -30,8 +30,9 @@
 #include <netinet/in.h> /* BSD, Linux: for inet_addr */
 #include <arpa/inet.h> /* BSD, Linux, Solaris: for inet_addr */
 
-#include "patricia.h"
+#include "stdinc.h"
 #include "magazine.h"
+#include "patricia.h"
 
 static magazine_t prefix_magazine = MAGAZINE_INIT(sizeof(prefix_t));
 static magazine_t node_magazine = MAGAZINE_INIT(sizeof(patricia_node_t));
