@@ -1327,7 +1327,6 @@ netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_
 	mowgli_descriptor_t fd;
 	unsigned int len;
 	unsigned char pkt[BUFSIZ];
-	unsigned int num_pkts = 0;
 	netflow_common_t *cmn;
 	mowgli_eventloop_pollable_t *pollable = mowgli_eventloop_io_pollable(io);
 	packet_info_t info;
@@ -1337,11 +1336,7 @@ netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_
 
 	fd = pollable->fd;
 
-#if 0
-	DPRINTF("reading udp/%d\n", fd);
-#endif
-
-	while (++num_pkts < 1000 && (len = recv(fd, pkt, BUFSIZ, 0)) > sizeof(*cmn))
+	while ((len = recv(fd, pkt, BUFSIZ, 0)) > sizeof(*cmn))
 	{
 		info.len = len;
 		info.ts.tv_sec = mowgli_eventloop_get_time(eventloop);
