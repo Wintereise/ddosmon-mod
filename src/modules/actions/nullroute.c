@@ -133,6 +133,9 @@ open_socket(const char *host, uint16_t port)
 static transport_session_t *
 ssh_session_setup(target_t *target)
 {
+	int ret;
+	char readbuf[1024] = "";
+	const char *reason = "closing session";
 	transport_session_t *session;
 
 	session = calloc(sizeof(transport_session_t), 1);
@@ -171,16 +174,31 @@ ssh_session_setup(target_t *target)
 	return session;
 
 no_shell:
+	reason = "no shell available";
 	libssh2_channel_free(session->transport.ssh.ssh_channel);
 
 shutdown:
-	libssh2_session_disconnect(session->transport.ssh.ssh_session, "closing session");
+	libssh2_session_disconnect(session->transport.ssh.ssh_session, reason);
 	libssh2_session_free(session->transport.ssh.ssh_session);
 	close(session->transport.ssh.sock);
 
 	free(session);
 
 	return NULL;
+}
+
+static void
+ssh_session_readline(LIBSSH2_CHANNEL *channel, char *buf, size_t buflen)
+{
+	int ret, offs = 0;
+
+	memset(buf, 0, buflen);
+
+	while (strchr(buf, '\n') == NULL)
+	{
+		ret = libssh2_channel_read(channel, buf + offs, buflen - offs);
+		offs += ret;
+	}
 }
 
 static int
@@ -191,6 +209,7 @@ ssh_session_writef(transport_session_t *session, const char *fmt, ...)
 	va_list va;
 	int ret;
 	LIBSSH2_CHANNEL *channel;
+	char readbuf[1024] = "";
 
 	channel = session->transport.ssh.ssh_channel;
 
@@ -198,9 +217,14 @@ ssh_session_writef(transport_session_t *session, const char *fmt, ...)
 	len = vasprintf(&line, fmt, va);
 	va_end(va);
 
-	DPRINTF("writing [\n%s] = ", line);
+	ssh_session_readline(channel, readbuf, 1024);
+	DPRINTF("< %s\n", readbuf);
+
+	DPRINTF("> %s\n", line);
 	ret = libssh2_channel_write(channel, line, len);
-	DPRINTF("%d\n", ret);
+
+	ssh_session_readline(channel, readbuf, 1024);
+	DPRINTF("< %s\n", readbuf);
 
 	free(line);
 
@@ -214,7 +238,7 @@ ssh_session_term(transport_session_t *session)
 
 	libssh2_channel_free(session->transport.ssh.ssh_channel);
 
-	libssh2_session_disconnect(session->transport.ssh.ssh_session, "closing session");
+	libssh2_session_disconnect(session->transport.ssh.ssh_session, "session finished");
 	libssh2_session_free(session->transport.ssh.ssh_session);
 	close(session->transport.ssh.sock);
 
