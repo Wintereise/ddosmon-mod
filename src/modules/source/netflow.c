@@ -1331,6 +1331,7 @@ netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_
 	netflow_common_t *cmn;
 	mowgli_eventloop_pollable_t *pollable = mowgli_eventloop_io_pollable(io);
 	packet_info_t info;
+	int cnt = 0;
 
 	if (pollable == NULL)
 		return;
@@ -1349,6 +1350,9 @@ netflow_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_
 		DPRINTF("Netflow version %d (len %d).\n", cmn->version, len);
 		if (pfunc[cmn->version] != NULL)
 			pfunc[cmn->version](pkt, &info);
+
+		if (++cnt > 1000)
+			return;
 	}
 }
 
