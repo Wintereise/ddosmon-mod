@@ -37,6 +37,7 @@
 
 static bool add_ethernet_overhead = false;
 static bool sflow_hack = false;
+static bool sflow_hack2 = false;
 static uint32_t sample_rate = 0;
 
 /*****************************************************************************************
@@ -993,7 +994,7 @@ static void netflow_parse_v1(unsigned char *pkt, packet_info_t *info)
 		};
 
 		/* don't inject precache flows */
-		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
+		if (!sflow_hack2 && (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10))))
 		{
 			crec->bytes = rec->bytes;
 			crec->packets = rec->packets;
@@ -1068,8 +1069,8 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 		int fakebps = sflow_hack ? rec->bytes : (rec->bytes - crec->bytes);
 		int fakepps = sflow_hack ? rec->packets : (rec->packets - crec->packets);
 
-		fakebps *= hdr->samp_interval;
-		fakepps *= hdr->samp_interval;
+		fakebps *= sample_rate ? sample_rate : hdr->samp_interval;
+		fakepps *= sample_rate ? sample_rate : hdr->samp_interval;
 
 		/* nenolod:
 		 * it seems that sometimes the netflow counters go backward... we don't want
@@ -1098,7 +1099,7 @@ static void netflow_parse_v5(unsigned char *pkt, packet_info_t *info)
 			},
 		};
 
-		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
+		if (!sflow_hack2 && (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10))))
 		{
 			if (sflow_hack)
 			{
@@ -1207,7 +1208,7 @@ static void netflow_parse_v7(unsigned char *pkt, packet_info_t *info)
 			},
 		};
 
-		if (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10)))
+		if (!sflow_hack && (!crec->injected && ((rec->bytes > 16384) || (rec->packets > 10))))
 		{
 			crec->bytes = rec->bytes;
 			crec->packets = rec->packets;
@@ -1398,6 +1399,8 @@ module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *entry)
 			add_ethernet_overhead = true;
 		else if (!strcasecmp(ce->varname, "sflow-hack"))
 			sflow_hack = true;
+		else if (!strcasecmp(ce->varname, "other-sflow-hack"))
+			sflow_hack2 = true;
 		else if (!strcasecmp(ce->varname, "sample-rate"))
 			sample_rate = atoi(ce->vardata);
 	}
