@@ -30,6 +30,11 @@
 #include "hook.h"
 #include "action.h"
 
+typedef enum _triggertype {
+	TRIGGER_DST,
+	TRIGGER_SRC
+} triggertype_t;
+
 typedef struct _triggeraction {
 	struct _triggeraction *next;
 	action_t *act;
@@ -37,6 +42,8 @@ typedef struct _triggeraction {
 
 typedef struct _trigger {
 	struct _trigger *next;
+
+	triggertype_t type;
 
 	unsigned int target_pps;
 	unsigned int target_mbps;
@@ -90,7 +97,16 @@ expire_trigger(void *data)
 
 	run_triggers(ACTION_UNBAN, rec->trigger, &rec->pkt, rec);
 
-	sin.s_addr = rec->irec.addr.s_addr;
+	switch (t->type) {
+	case TRIGGER_SRC:
+		sin.s_addr = rec->pkt.pkt_src.s_addr;
+		break;
+	case TRIGGER_DST:
+	default:
+		sin.s_addr = rec->pkt.pkt_dst.s_addr;
+		break;
+	};
+
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -109,7 +125,17 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	patricia_node_t *node;
 	struct in_addr sin;
 
-	if (ban_find(irec->addr.s_addr) != NULL)
+	switch (t->type) {
+	case TRIGGER_SRC:
+		sin.s_addr = packet->pkt_src.s_addr;
+		break;
+	case TRIGGER_DST:
+	default:
+		sin.s_addr = packet->pkt_dst.s_addr;
+		break;
+	};
+
+	if (ban_find(sin.s_addr) != NULL)
 		return NULL;
 
 	rec = calloc(sizeof(banrecord_t), 1);
@@ -120,7 +146,6 @@ trigger_ban(trigger_t *t, packet_info_t *packet, iprecord_t *irec)
 	rec->added = mowgli_eventloop_get_time(eventloop);
 	rec->expiry_ts = rec->added + (t->expiry ? t->expiry : expiry);
 
-	sin.s_addr = irec->addr.s_addr;
 	pfx = New_Prefix(AF_INET, &sin, 32);
 
 	node = patricia_lookup(banrecord_trie, pfx);
@@ -244,6 +269,11 @@ parse_trigger(mowgli_config_file_entry_t *entry)
 			t->expiry = atoi(ce->vardata);
 		else if (!strcasecmp(ce->varname, "actions"))
 			parse_actions(t, ce->entries);
+		else if (!strcasecmp(ce->varname, "action_direction"))
+		{
+			if (!strcasecmp(ce->vardata, "source"))
+				t->type = TRIGGER_SRC;
+		}
 	}
 
 	DPRINTF("t->protocol %d\n", t->protocol);
