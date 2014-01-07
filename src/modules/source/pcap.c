@@ -256,7 +256,7 @@ pcap_handle(mowgli_eventloop_t *eventloop, mowgli_eventloop_io_t *io, mowgli_eve
 
 	DPRINTF("reading pcap/%p\n", handle);
 
-	pcap_dispatch(handle, -1, (pcap_handler) pcap_process_specific_pkt, NULL);
+	pcap_dispatch(handle, 1000, (pcap_handler) pcap_process_specific_pkt, NULL);
 }
 
 static int

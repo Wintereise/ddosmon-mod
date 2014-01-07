@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.64])
+AC_PREREQ([2.63])
 AC_INIT([ddosmon], [3.0], [nenolod@systeminplace.net])
 AC_CONFIG_SRCDIR([src/stdinc.h])
 AC_CONFIG_HEADERS([src/autoconf.h])
