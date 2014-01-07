@@ -44,7 +44,7 @@ typedef struct _banrecord {
 	mowgli_eventloop_timer_t *timer;
 } banrecord_t;
 
-typedef void (*action_f)(actiontype_t type, packet_info_t *info, banrecord_t *rec, void *data);
+typedef void (*action_f)(actiontype_t type, triggertype_t t_type, packet_info_t *info, banrecord_t *rec, void *data);
 
 typedef struct _action {
 	const char *action;

@@ -111,7 +111,7 @@ list_flows(FILE *out, packet_info_t *packet, int max_lines)
 }
 
 static void
-send_email(actiontype_t act, packet_info_t *packet, banrecord_t *rec, void *data)
+send_email(actiontype_t act, triggertype_t type, packet_info_t *packet, banrecord_t *rec, void *data)
 {
 	FILE *out;
 	int pipfds[2];
