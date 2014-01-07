@@ -30,11 +30,6 @@
 #include "hook.h"
 #include "action.h"
 
-typedef enum _triggertype {
-	TRIGGER_DST,
-	TRIGGER_SRC
-} triggertype_t;
-
 typedef struct _triggeraction {
 	struct _triggeraction *next;
 	action_t *act;

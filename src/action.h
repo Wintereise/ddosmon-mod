@@ -24,6 +24,11 @@
 #include "ipstate.h"
 
 typedef enum {
+	TRIGGER_DST,
+	TRIGGER_SRC
+} triggertype_t;
+
+typedef enum {
 	ACTION_BAN,
 	ACTION_UNBAN
 } actiontype_t;

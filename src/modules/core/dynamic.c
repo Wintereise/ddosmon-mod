@@ -31,11 +31,6 @@
 
 static unsigned int default_minimum_flows, default_minimum_pps, default_minimum_mbps;
 
-typedef enum _triggertype {
-	TRIGGER_DST,
-	TRIGGER_SRC
-} triggertype_t;
-
 typedef struct _triggeraction {
 	struct _triggeraction *next;
 	action_t *act;
