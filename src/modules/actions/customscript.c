@@ -33,7 +33,15 @@ run_script(actiontype_t act, triggertype_t type, packet_info_t *packet, banrecor
 	char *program = NULL;
 	customscript_t *cs = data;
 
-	inet_ntop(AF_INET, &packet->pkt_dst, dstbuf, INET6_ADDRSTRLEN);
+	switch (type) {
+	case TRIGGER_SRC:
+		inet_ntop(AF_INET, &packet->pkt_src, dstbuf, INET6_ADDRSTRLEN);
+		break;
+	case TRIGGER_DST:
+	default:
+		inet_ntop(AF_INET, &packet->pkt_dst, dstbuf, INET6_ADDRSTRLEN);
+		break;
+	}
 
 	switch (act)
 	{
