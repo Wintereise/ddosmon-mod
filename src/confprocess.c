@@ -31,9 +31,8 @@
 #include "sourcefactory.h"
 
 void
-conf_process(mowgli_eventloop_t *eventloop)
+conf_process(mowgli_eventloop_t *eventloop, const char *path)
 {
-	const char *path = CONFIGFILE;
 	mowgli_config_file_t *cf;
 	mowgli_config_file_entry_t *ce;
 

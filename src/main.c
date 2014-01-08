@@ -85,6 +85,7 @@ main(int argc, const char *argv[])
 #ifdef HAVE_GETRLIMIT
 	struct rlimit rlim;
 #endif
+	const char *configfile = CONFIGFILE;
 
 #ifdef HAVE_GETRLIMIT
 	if (!getrlimit(RLIMIT_CORE, &rlim))
@@ -100,7 +101,7 @@ main(int argc, const char *argv[])
 
 	eventloop = mowgli_eventloop_create();
 
-	conf_process(eventloop);
+	conf_process(eventloop, configfile);
 	ipstate_setup(eventloop);
 	flowcache_setup(eventloop);
 

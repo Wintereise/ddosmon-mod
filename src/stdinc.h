@@ -53,6 +53,7 @@ extern mowgli_eventloop_t *eventloop;
 #endif
 
 extern void module_cons(mowgli_eventloop_t *eventloop, mowgli_config_file_entry_t *ce);
+extern void conf_process(mowgli_eventloop_t *eventloop, const char *path);
 
 #ifdef VALGRIND
 # undef HAVE_FORK
