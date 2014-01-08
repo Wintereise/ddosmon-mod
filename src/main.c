@@ -46,7 +46,7 @@ mowgli_eventloop_t *eventloop;
 #endif
 
 static void
-daemonize(const char *b_wm)
+daemonize(const char *b_wm, const char *configfile)
 {
 #ifdef HAVE_FORK
 	int pid;
@@ -60,6 +60,7 @@ daemonize(const char *b_wm)
 	{
 		printf("ddosmon: build identifier %s\n", b_wm);
 		printf("ddosmon: pid %d\n", pid);
+		printf("ddosmon: using config file %s\n", configfile);
 		printf("ddosmon: running in background mode from %s\n", PREFIX);
 		exit(EXIT_SUCCESS);
 	}
@@ -74,11 +75,12 @@ daemonize(const char *b_wm)
 	dup2(0, 2);
 #else
 	printf("ddosmon: build identifier %s [DEBUG]\n", b_wm);
+	printf("ddosmon: using config file %s\n", configfile);
 #endif
 }
 
 int
-main(int argc, const char *argv[])
+main(int argc, char *argv[])
 {
 	int fd;
 	static char *build_watermark = WATERMARK;
@@ -86,6 +88,18 @@ main(int argc, const char *argv[])
 	struct rlimit rlim;
 #endif
 	const char *configfile = CONFIGFILE;
+	int r;
+
+	/* do command-line options */
+	while ((r = getopt(argc, argv, "c:")) != -1)
+	{
+		switch (r)
+		{
+		case 'c':
+			configfile = strdup(optarg);
+			break;
+		}
+	}
 
 #ifdef HAVE_GETRLIMIT
 	if (!getrlimit(RLIMIT_CORE, &rlim))
@@ -97,7 +111,7 @@ main(int argc, const char *argv[])
 
 	signal(SIGCHLD, SIG_IGN);
 
-	daemonize(build_watermark);
+	daemonize(build_watermark, configfile);
 
 	eventloop = mowgli_eventloop_create();
 
