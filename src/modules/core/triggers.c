@@ -168,7 +168,7 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 	for (i = t_list[packet->ip_type]; i != NULL; i = i->next)
 	{
 		int pps, mbps;
-		int do_trigger = 0;
+		int do_trigger = 0, nullable_trigger = 0, threshold_trigger = 0;
 
 		DPRINTF("check trigger packet %p record %p protocol %d pktproto %d\n", packet, rec, i->protocol, packet->ip_type);
 
@@ -199,10 +199,13 @@ check_trigger(packet_info_t *packet, iprecord_t *rec)
 
 		if (do_trigger)
 			HOOK_CALL(HOOK_CHECK_EXEMPT, packet, rec, &do_trigger);
+			DPRINTF("HOOK_CHECK_EXEMPT result %d\n", do_trigger);
+			HOOK_CALL(HOOK_CHECK_NULLABLE, packet, rec, &nullable_trigger);
+			DPRINTF("HOOK_CHECK_NULLABLE result %d\n", nullable_trigger);
+			HOOK_CALL(HOOK_CHECK_THRES, packet, rec, &threshold_trigger, pps, mbps, i->target_pps, i->target_mbps);
+			DPRINTF("HOOK_CHECK_THRES result %d\n", threshold_trigger);
 
-		DPRINTF("HOOK_CHECK_EXEMPT result %d\n", do_trigger);
-
-		if (do_trigger)
+		if (do_trigger && nullable_trigger && !threshold_trigger)
 			trigger_ban(i, packet, rec);
 	}
 }

@@ -1,5 +1,5 @@
 MODULE = core
-SRCS = dynamic.c exempts.c triggers.c
+SRCS = dynamic.c exempts.c triggers.c nullable.c
 
 include ../../../buildsys.mk
 include ../../../buildsys.module.mk
