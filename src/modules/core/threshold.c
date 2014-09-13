@@ -32,9 +32,6 @@
 #include "hook.h"
 #include "action.h"
 
-
-
-
 typedef enum {
 	THRESHOLD_TYPE_ANY = 0,
 	THRESHOLD_TYPE_SRC = 1,
